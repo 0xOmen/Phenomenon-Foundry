@@ -40,4 +40,11 @@ contract PhenomenonTicketEngine {
     function setTicketMultiplier(uint256 _ticketMultiplier) external onlyOwner {
         s_ticketMultiplier = _ticketMultiplier;
     }
+
+    // function getTicketShare() ??? or just call from game contract?
+    // function getPrice() ??? or just call from the game contract?
+    // function highPriest()
+    // function getReligion()
+    // function loseReligion()
+    // function redeem/claimTickets() ???
 }
