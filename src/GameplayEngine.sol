@@ -30,4 +30,14 @@ contract GameplayEngine {
     function changeOwner(address newOwner) public onlyOwner {
         owner = newOwner;
     }
+
+    // function enterGame()
+    // function startGame()
+    // function ruleCheck()
+    // function performMiracle()
+    // function attemptSmite()
+    // function accuseOfBlasphemy()
+
+    // function reset() ???
+    // function turnManager() ???
 }
