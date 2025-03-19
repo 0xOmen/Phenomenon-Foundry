@@ -112,6 +112,14 @@ contract PhenomenonTicketEngine {
         i_gameContract.increaseTotalTickets(1);
     }
 
+    function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
+        uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
+        uint256 sum2 =
+            (((1 + supply) + amount - 1) * ((1 + supply) + amount) * (2 * ((1 + supply) + amount - 1) + 1)) / 6;
+        uint256 summation = sum2 - sum1;
+        return (((summation * 1 ether) * s_ticketMultiplier) / 2);
+    }
+
     function getProphetData(uint256 prophetNum) public view returns (address, bool, bool, uint256) {
         return i_gameContract.getProphetData(prophetNum);
     }
