@@ -16,6 +16,7 @@ contract PhenomenonTicketEngine {
     error Game__NotAllowed();
     error Game__NotInProgress();
     error Game__AddressIsEliminated();
+    error Game__ProphetIsDead();
 
     struct ProphetData {
         address playerAddress;
@@ -112,6 +113,63 @@ contract PhenomenonTicketEngine {
         i_gameContract.increaseTotalTickets(1);
     }
 
+    /**
+     * @notice Use this to buy Tickets of a prophet. You can only own tickets of one prophet.
+     * @notice In this version you cannot sell tickets, this could change in future versions.
+     * @dev
+     */
+    function getReligion(uint256 _prophetNum, uint256 _ticketsToBuy) public {
+        // Make sure game state allows for tickets to be bought
+        uint256 gameStatus = uint256(i_gameContract.gameStatus());
+        if (gameStatus != 1) {
+            revert Game__NotInProgress();
+        }
+        // Prophets cannot buy tickets
+        // the ability to 'buy' 0 tickets would allow changing of allegiance
+        bool isSenderProphet = i_gameContract.checkProphetList(msg.sender);
+        if (isSenderProphet || _ticketsToBuy == 0) {
+            revert Game__NotAllowed();
+        }
+        // Can't buy tickets of dead or nonexistent prophets
+        address targetProphetAddress;
+        bool targetProphetAlive;
+        uint256 targetProphetArgs;
+        (targetProphetAddress, targetProphetAlive,, targetProphetArgs) = getProphetData(_prophetNum);
+        if (targetProphetAlive == false || _prophetNum >= i_gameContract.s_numberOfProphets()) {
+            revert Game__ProphetIsDead();
+        }
+
+        // Cannot buy/sell  tickets if address eliminated (allegiant to prophet when that prophet is killed)
+        // Addresses that own no tickets will default allegiance to 0 but 0 is a player number
+        //  This causes issues with game logic so if allegiance is to 0
+        //  we must also check if sending address owns tickets
+        // If the address owns tickets then they truly have allegiance to player 0
+        uint256 gameNumber = i_gameContract.s_gameNumber();
+        uint256 senderTicketCount = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
+        uint256 senderAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
+        bool senderAllegianceAlive;
+        (, senderAllegianceAlive,,) = getProphetData(senderAllegiance);
+        if (senderAllegianceAlive == false && senderTicketCount != 0) {
+            revert Game__AddressIsEliminated();
+        }
+
+        // Check if player owns any tickets of another prophet
+        if (senderTicketCount != 0 && senderAllegiance != _prophetNum) {
+            revert Game__NotAllowed();
+        }
+
+        uint256 totalPrice = getPrice(i_gameContract.accolites(_prophetNum), _ticketsToBuy);
+
+        i_gameContract.increaseTicketsToValhalla(msg.sender, _ticketsToBuy);
+        i_gameContract.increaseAccolites(_prophetNum, _ticketsToBuy);
+        i_gameContract.increaseTotalTickets(_ticketsToBuy);
+        i_gameContract.increaseTokenDepositedThisGame(totalPrice);
+        i_gameContract.setPlayerAllegiance(msg.sender, _prophetNum);
+        emit gainReligion(_prophetNum, _ticketsToBuy, totalPrice, msg.sender);
+
+        //i_gameContract.depositGameTokens(msg.sender, totalPrice);
+    }
+
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
         uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
         uint256 sum2 =
@@ -124,7 +182,6 @@ contract PhenomenonTicketEngine {
         return i_gameContract.getProphetData(prophetNum);
     }
 
-    // function getPrice() ??? or just call from the game contract?
     // function getReligion()
     // function loseReligion()
     // function redeem/claimTickets() ???

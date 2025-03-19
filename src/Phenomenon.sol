@@ -484,51 +484,17 @@ contract Phenomenon {
         allegiance[s_gameNumber][player] = target;
     }
 
-    function getReligion(uint256 _prophetNum, uint256 _ticketsToBuy) public {
-        // Make sure game state allows for tickets to be bought
-        if (gameStatus != GameState.IN_PROGRESS) {
-            revert Game__NotInProgress();
-        }
-        // Prophets cannot buy tickets
-        // the ability to send 'buy' 0 tickets allows changing of allegiance
-        if (prophetList[s_gameNumber][msg.sender] || _ticketsToBuy == 0) {
-            revert Game__NotAllowed();
-        }
-        // Can't buy tickets of dead or nonexistent prophets
-        if (prophets[_prophetNum].isAlive == false || _prophetNum >= s_numberOfProphets) {
-            revert Game__ProphetIsDead();
-        }
-        /*
-        // Cannot buy/sell  tickets if address eliminated (allegiant to prophet when killed)
-        // Addresses that own no tickets will default allegiance to 0 but 0 is a player number
-        //  This causes issues with game logic so if allegiance is to 0
-        //  we must also check if sending address owns tickets
-        // If the address owns tickets then they truly have allegiance to player 0
-        if (
-            prophets[allegiance[s_gameNumber][msg.sender]].isAlive == false &&
-            ticketsToValhalla[s_gameNumber][msg.sender] != 0
-        ) {
-            revert Game__AddressIsEliminated();
-        }
+    function increaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
+        accolites[target] += amount;
+    }
 
-        // Check if player owns any tickets of another prophet
-        if (
-            ticketsToValhalla[s_gameNumber][msg.sender] != 0 &&
-            allegiance[s_gameNumber][msg.sender] != _prophetNum
-        ) {
-            revert Game__NotAllowed();
-        } */
+    function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
+        s_tokensDepositedThisGame += amount;
+    }
 
-        uint256 totalPrice = getPrice(accolites[_prophetNum], _ticketsToBuy);
-
-        ticketsToValhalla[s_gameNumber][msg.sender] += _ticketsToBuy;
-        accolites[_prophetNum] += _ticketsToBuy;
-        s_totalTickets += _ticketsToBuy;
-        s_tokensDepositedThisGame += totalPrice;
-        allegiance[s_gameNumber][msg.sender] = _prophetNum;
-        emit gainReligion(_prophetNum, _ticketsToBuy, totalPrice, msg.sender);
-
-        IERC20(GAME_TOKEN).transferFrom(msg.sender, address(this), totalPrice);
+    // non-reentrant?
+    function depositGameTokens(address player, uint256 amount) external onlyContract(s_ticketEngine) {
+        IERC20(GAME_TOKEN).transferFrom(player, address(this), amount);
     }
 
     /*
@@ -629,5 +595,9 @@ contract Phenomenon {
             prophets[_prophetNum].isFree,
             prophets[_prophetNum].args
         );
+    }
+
+    function checkProphetList(address target) public view returns (bool) {
+        return prophetList[s_gameNumber][target];
     }
 }
