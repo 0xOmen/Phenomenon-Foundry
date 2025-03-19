@@ -27,7 +27,8 @@ contract Phenomenon {
     error Game__AddressIsEliminated();
     error Game__ProphetNotFree();
     error Game__OutOfTurn();
-    error Contract__OnlyOwner();
+    error Game__OnlyOwner();
+    error Game__OnlyController();
     error Game__NoRandomNumber();
     error Game__MinimumTimeNotPassed();
     ///////////////////////////// Types ///////////////////////////////////
@@ -134,7 +135,16 @@ contract Phenomenon {
 
     ////////////////////////// Modifiers ////////////////////////////
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        if (msg.sender != owner) {
+            revert Game__OnlyOwner();
+        }
+        _;
+    }
+
+    modifier onlyContract(address controller) {
+        if (msg.sender != controller) {
+            revert Game__OnlyController();
+        }
         _;
     }
 
@@ -444,6 +454,34 @@ contract Phenomenon {
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
         if (s_totalTickets == 0) return 0;
         else return ((accolites[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
+    }
+
+    function increaseHighPriest(uint256 target) public onlyContract(s_ticketEngine) {
+        highPriestsByProphet[target]++;
+    }
+
+    function decreaseHighPriest(uint256 target) public onlyContract(s_ticketEngine) {
+        highPriestsByProphet[target]--;
+    }
+
+    function increaseTicketsToValhalla(address target, uint256 amount) public onlyContract(s_ticketEngine) {
+        ticketsToValhalla[s_gameNumber][target] += amount;
+    }
+
+    function decreaseTicketsToValhalla(address target, uint256 amount) public onlyContract(s_ticketEngine) {
+        ticketsToValhalla[s_gameNumber][target] -= amount;
+    }
+
+    function increaseTotalTickets(uint256 amount) public onlyContract(s_ticketEngine) {
+        s_totalTickets += amount;
+    }
+
+    function decreaseTotalTickets(uint256 amount) public onlyContract(s_ticketEngine) {
+        s_totalTickets -= amount;
+    }
+
+    function setPlayerAllegiance(address player, uint256 target) public onlyContract(s_ticketEngine) {
+        allegiance[s_gameNumber][player] = target;
     }
 
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
