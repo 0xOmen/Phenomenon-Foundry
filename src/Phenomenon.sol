@@ -446,38 +446,6 @@ contract Phenomenon {
         else return ((accolites[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
     }
 
-    function highPriest(uint256 _senderProphetNum, uint256 _target) public {
-        // Only prophets can call this function
-        // Prophet must be alive or assigned to high priest
-        // Can't try to follow non-existent prophet
-        // Can't call if <= 2 prophets remain
-        if (
-            prophets[_senderProphetNum].playerAddress != msg.sender
-                || (!prophets[_senderProphetNum].isAlive && prophets[_senderProphetNum].args != 99)
-                || _target >= s_numberOfProphets || s_prophetsRemaining <= 2
-        ) {
-            revert Game__NotAllowed();
-        }
-        // Can't change allegiance if following an eliminated prophet
-        if (prophets[allegiance[s_gameNumber][msg.sender]].isAlive == false) {
-            if (allegiance[s_gameNumber][msg.sender] == 0 && prophets[0].args != 99) revert Game__AddressIsEliminated();
-        }
-        if (gameStatus != GameState.IN_PROGRESS) {
-            revert Game__NotInProgress();
-        }
-        if (ticketsToValhalla[s_gameNumber][msg.sender] > 0) {
-            highPriestsByProphet[allegiance[s_gameNumber][msg.sender]]--;
-            ticketsToValhalla[s_gameNumber][msg.sender]--;
-            s_totalTickets--;
-            emit religionLost(_target, 1, 0, msg.sender);
-        }
-        emit gainReligion(_target, 1, 0, msg.sender);
-        highPriestsByProphet[_target]++;
-        ticketsToValhalla[s_gameNumber][msg.sender]++;
-        allegiance[s_gameNumber][msg.sender] = _target;
-        s_totalTickets++;
-    }
-
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
         uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
         uint256 sum2 =
@@ -622,5 +590,14 @@ contract Phenomenon {
 
     function setMinInterval(uint256 _newMinInterval) public onlyOwner {
         s_minInterval = _newMinInterval;
+    }
+
+    function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
+        return (
+            prophets[_prophetNum].playerAddress,
+            prophets[_prophetNum].isAlive,
+            prophets[_prophetNum].isFree,
+            prophets[_prophetNum].args
+        );
     }
 }
