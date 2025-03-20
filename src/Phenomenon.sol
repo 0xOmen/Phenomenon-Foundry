@@ -124,13 +124,6 @@ contract Phenomenon {
     );
     event gameEnded(uint256 indexed gameNumber, uint256 indexed tokensPerTicket, uint256 indexed currentProphetTurn);
     event gameReset(uint256 indexed newGameNumber);
-    event religionLost(
-        uint256 indexed _target, uint256 indexed numTicketsSold, uint256 indexed totalPrice, address sender
-    );
-    event gainReligion(
-        uint256 indexed _target, uint256 indexed numTicketsBought, uint256 indexed totalPrice, address sender
-    );
-    event ticketsClaimed(uint256 indexed ticketsClaimed, uint256 indexed tokensSent, uint256 indexed gameNumber);
     event currentTurn(uint256 indexed nextProphetTurn);
 
     ////////////////////////// Modifiers ////////////////////////////
@@ -512,26 +505,6 @@ contract Phenomenon {
 
     function returnGameTokens(address to, uint256 amount) external onlyContract(s_ticketEngine) {
         IERC20(GAME_TOKEN).transfer(to, amount);
-    }
-
-    function claimTickets(uint256 _gameNumber) public {
-        if (_gameNumber >= s_gameNumber) {
-            revert Game__NotAllowed();
-        }
-        // TurnManager sets currentProphetTurn to game winner, so use this to check if allegiance is to the winner
-        if (allegiance[_gameNumber][msg.sender] != currentProphetTurn[_gameNumber]) {
-            revert Game__AddressIsEliminated();
-        }
-        if (ticketsToValhalla[_gameNumber][msg.sender] == 0) {
-            revert Game__NotEnoughTicketsOwned();
-        }
-
-        uint256 tokensToSend = ticketsToValhalla[_gameNumber][msg.sender] * tokensPerTicket[_gameNumber];
-        ticketsToValhalla[_gameNumber][msg.sender] = 0;
-
-        emit ticketsClaimed(ticketsToValhalla[_gameNumber][msg.sender], tokensToSend, _gameNumber);
-
-        IERC20(GAME_TOKEN).transfer(msg.sender, tokensToSend);
     }
 
     function getOwnerTokenBalance() public view returns (uint256) {

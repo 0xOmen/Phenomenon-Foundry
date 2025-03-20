@@ -38,6 +38,7 @@ contract PhenomenonTicketEngine {
     event gainReligion(
         uint256 indexed _target, uint256 indexed numTicketsBought, uint256 indexed totalPrice, address sender
     );
+    event ticketsClaimed(uint256 indexed ticketsClaimed, uint256 indexed tokensSent, uint256 indexed gameNumber);
 
     constructor(
         address gameContractAddress,
@@ -212,6 +213,29 @@ contract PhenomenonTicketEngine {
         i_gameContract.returnGameTokens(msg.sender, totalPrice);
     }
 
+    function claimTickets(uint256 _gameNumber) public {
+        uint256 currentGameNumber = i_gameContract.s_gameNumber();
+        if (_gameNumber >= currentGameNumber) {
+            revert Game__NotAllowed();
+        }
+        // TurnManager sets currentProphetTurn to game winner, so use this to check if allegiance is to the winner
+        if (i_gameContract.allegiance(_gameNumber, msg.sender) != i_gameContract.currentProphetTurn(_gameNumber)) {
+            revert Game__AddressIsEliminated();
+        }
+        uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, msg.sender);
+        if (startingUserTickets == 0) {
+            revert Game__NotEnoughTicketsOwned();
+        }
+
+        uint256 tokensToSend = startingUserTickets * i_gameContract.tokensPerTicket(_gameNumber);
+        // Remove tickets from msg.sender's balance
+        i_gameContract.decreaseTicketsToValhalla(msg.sender, startingUserTickets);
+
+        emit ticketsClaimed(startingUserTickets, tokensToSend, _gameNumber);
+
+        i_gameContract.returnGameTokens(msg.sender, tokensToSend);
+    }
+
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
         uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
         uint256 sum2 =
@@ -223,6 +247,4 @@ contract PhenomenonTicketEngine {
     function getProphetData(uint256 prophetNum) public view returns (address, bool, bool, uint256) {
         return i_gameContract.getProphetData(prophetNum);
     }
-
-    // function redeem/claimTickets() ???
 }
