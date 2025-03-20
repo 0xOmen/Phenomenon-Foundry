@@ -488,61 +488,31 @@ contract Phenomenon {
         accolites[target] += amount;
     }
 
+    function decreaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
+        accolites[target] -= amount;
+    }
+
     function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
         s_tokensDepositedThisGame += amount;
+    }
+
+    function decreaseTokensDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
+        s_tokensDepositedThisGame -= amount;
+    }
+
+    function applyProtocolFee(uint256 amount) public onlyContract(s_ticketEngine) {
+        s_ownerTokenBalance += amount;
     }
 
     // non-reentrant?
     function depositGameTokens(address player, uint256 amount) external onlyContract(s_ticketEngine) {
         IERC20(GAME_TOKEN).transferFrom(player, address(this), amount);
     }
+    // non-reentrant?
 
-    /*
-    function loseReligion(uint256 _ticketsToSell) public {
-        if (gameStatus != GameState.IN_PROGRESS) {
-            revert Game__NotInProgress();
-        }
-        // Can't sell tickets of a dead prophet
-        if (prophets[allegiance[s_gameNumber][msg.sender]].isAlive == false) {
-            revert Game__ProphetIsDead();
-        }
-        // Prophets cannot sell tickets
-        if (prophetList[s_gameNumber][msg.sender]) {
-            revert Game__NotAllowed();
-        }
-        if (
-            _ticketsToSell <= ticketsToValhalla[s_gameNumber][msg.sender] &&
-            _ticketsToSell != 0
-        ) {
-            // Get price of selling tickets
-            uint256 totalPrice = getPrice(
-                accolites[allegiance[s_gameNumber][msg.sender]] -
-                    _ticketsToSell,
-                _ticketsToSell
-            );
-            emit religionLost(
-                allegiance[s_gameNumber][msg.sender],
-                _ticketsToSell,
-                totalPrice,
-                msg.sender
-            );
-            // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
-            s_totalTickets -= _ticketsToSell;
-            accolites[allegiance[s_gameNumber][msg.sender]] -= _ticketsToSell;
-            // Remove tickets from msg.sender's balance
-            ticketsToValhalla[s_gameNumber][msg.sender] -= _ticketsToSell;
-            // If msg.sender sold all tickets then set allegiance to 0
-            if (ticketsToValhalla[s_gameNumber][msg.sender] == 0)
-                allegiance[s_gameNumber][msg.sender] = 0;
-            // Subtract the price of tickets sold from the s_tokensDepositedThisGame for this game
-            s_tokensDepositedThisGame -= totalPrice;
-            //Take 5% fee
-            s_ownerTokenBalance += (totalPrice * 5) / 100;
-            totalPrice = (totalPrice * 95) / 100;
-
-            IERC20(GAME_TOKEN).transfer(msg.sender, totalPrice);
-        } else revert Game__NotEnoughTicketsOwned();
-    }*/
+    function returnGameTokens(address player, uint256 amount) external onlyContract(s_ticketEngine) {
+        IERC20(GAME_TOKEN).transfer(player, amount);
+    }
 
     function claimTickets(uint256 _gameNumber) public {
         if (_gameNumber >= s_gameNumber) {

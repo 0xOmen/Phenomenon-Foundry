@@ -17,6 +17,7 @@ contract PhenomenonTicketEngine {
     error Game__NotInProgress();
     error Game__AddressIsEliminated();
     error Game__ProphetIsDead();
+    error Game__NotEnoughTicketsOwned();
 
     struct ProphetData {
         address playerAddress;
@@ -131,10 +132,8 @@ contract PhenomenonTicketEngine {
             revert Game__NotAllowed();
         }
         // Can't buy tickets of dead or nonexistent prophets
-        address targetProphetAddress;
         bool targetProphetAlive;
-        uint256 targetProphetArgs;
-        (targetProphetAddress, targetProphetAlive,, targetProphetArgs) = getProphetData(_prophetNum);
+        (, targetProphetAlive,,) = getProphetData(_prophetNum);
         if (targetProphetAlive == false || _prophetNum >= i_gameContract.s_numberOfProphets()) {
             revert Game__ProphetIsDead();
         }
@@ -170,6 +169,50 @@ contract PhenomenonTicketEngine {
         //i_gameContract.depositGameTokens(msg.sender, totalPrice);
     }
 
+    function loseReligion(uint256 _ticketsToSell) public {
+        uint256 gameStatus = uint256(i_gameContract.gameStatus());
+        if (gameStatus != 1) {
+            revert Game__NotInProgress();
+        }
+        // Can't sell tickets of a dead prophet
+        uint256 gameNumber = i_gameContract.s_gameNumber();
+        uint256 currentAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
+        bool targetProphetAlive;
+        (, targetProphetAlive,,) = getProphetData(currentAllegiance);
+        if (targetProphetAlive == false) {
+            revert Game__ProphetIsDead();
+        }
+        // Prophets cannot sell tickets
+        if (i_gameContract.prophetList(gameNumber, msg.sender)) {
+            revert Game__NotAllowed();
+        }
+        // User cannot sell more tickets than they own
+        uint256 startingUserTickets = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
+        if (_ticketsToSell <= startingUserTickets && _ticketsToSell != 0) {
+            // Get price of selling tickets
+            uint256 totalPrice = getPrice(i_gameContract.accolites(currentAllegiance) - _ticketsToSell, _ticketsToSell);
+            emit religionLost(currentAllegiance, _ticketsToSell, totalPrice, msg.sender);
+            // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
+            i_gameContract.decreaseTotalTickets(_ticketsToSell);
+            i_gameContract.decreaseAccolites(currentAllegiance, _ticketsToSell);
+            // Remove tickets from msg.sender's balance
+            i_gameContract.decreaseTicketsToValhalla(msg.sender, _ticketsToSell);
+            // If msg.sender sold all tickets then set allegiance to 0
+            if ((startingUserTickets - _ticketsToSell) == 0) {
+                i_gameContract.setPlayerAllegiance(msg.sender, 0);
+            }
+            // Subtract the price of tickets sold from the s_tokensDepositedThisGame for this game
+            i_gameContract.decreaseTokensDepositedThisGame(totalPrice);
+            //Take 5% fee
+            i_gameContract.applyProtocolFee((totalPrice * 5) / 100);
+            totalPrice = (totalPrice * 95) / 100;
+
+            i_gameContract.returnGameTokens(msg.sender, totalPrice);
+        } else {
+            revert Game__NotEnoughTicketsOwned();
+        }
+    }
+
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
         uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
         uint256 sum2 =
@@ -182,7 +225,6 @@ contract PhenomenonTicketEngine {
         return i_gameContract.getProphetData(prophetNum);
     }
 
-    // function getReligion()
     // function loseReligion()
     // function redeem/claimTickets() ???
 }
