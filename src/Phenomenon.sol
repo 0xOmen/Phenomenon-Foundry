@@ -505,13 +505,13 @@ contract Phenomenon {
     }
 
     // non-reentrant?
-    function depositGameTokens(address player, uint256 amount) external onlyContract(s_ticketEngine) {
-        IERC20(GAME_TOKEN).transferFrom(player, address(this), amount);
+    function depositGameTokens(address from, uint256 amount) external onlyContract(s_ticketEngine) {
+        IERC20(GAME_TOKEN).transferFrom(from, address(this), amount);
     }
     // non-reentrant?
 
-    function returnGameTokens(address player, uint256 amount) external onlyContract(s_ticketEngine) {
-        IERC20(GAME_TOKEN).transfer(player, amount);
+    function returnGameTokens(address to, uint256 amount) external onlyContract(s_ticketEngine) {
+        IERC20(GAME_TOKEN).transfer(to, amount);
     }
 
     function claimTickets(uint256 _gameNumber) public {

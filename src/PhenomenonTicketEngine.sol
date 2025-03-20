@@ -166,7 +166,7 @@ contract PhenomenonTicketEngine {
         i_gameContract.setPlayerAllegiance(msg.sender, _prophetNum);
         emit gainReligion(_prophetNum, _ticketsToBuy, totalPrice, msg.sender);
 
-        //i_gameContract.depositGameTokens(msg.sender, totalPrice);
+        i_gameContract.depositGameTokens(msg.sender, totalPrice);
     }
 
     function loseReligion(uint256 _ticketsToSell) public {
@@ -188,29 +188,28 @@ contract PhenomenonTicketEngine {
         }
         // User cannot sell more tickets than they own
         uint256 startingUserTickets = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
-        if (_ticketsToSell <= startingUserTickets && _ticketsToSell != 0) {
-            // Get price of selling tickets
-            uint256 totalPrice = getPrice(i_gameContract.accolites(currentAllegiance) - _ticketsToSell, _ticketsToSell);
-            emit religionLost(currentAllegiance, _ticketsToSell, totalPrice, msg.sender);
-            // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
-            i_gameContract.decreaseTotalTickets(_ticketsToSell);
-            i_gameContract.decreaseAccolites(currentAllegiance, _ticketsToSell);
-            // Remove tickets from msg.sender's balance
-            i_gameContract.decreaseTicketsToValhalla(msg.sender, _ticketsToSell);
-            // If msg.sender sold all tickets then set allegiance to 0
-            if ((startingUserTickets - _ticketsToSell) == 0) {
-                i_gameContract.setPlayerAllegiance(msg.sender, 0);
-            }
-            // Subtract the price of tickets sold from the s_tokensDepositedThisGame for this game
-            i_gameContract.decreaseTokensDepositedThisGame(totalPrice);
-            //Take 5% fee
-            i_gameContract.applyProtocolFee((totalPrice * 5) / 100);
-            totalPrice = (totalPrice * 95) / 100;
-
-            i_gameContract.returnGameTokens(msg.sender, totalPrice);
-        } else {
+        if (_ticketsToSell > startingUserTickets || _ticketsToSell == 0) {
             revert Game__NotEnoughTicketsOwned();
         }
+        // Get price of selling tickets
+        uint256 totalPrice = getPrice(i_gameContract.accolites(currentAllegiance) - _ticketsToSell, _ticketsToSell);
+        emit religionLost(currentAllegiance, _ticketsToSell, totalPrice, msg.sender);
+        // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
+        i_gameContract.decreaseTotalTickets(_ticketsToSell);
+        i_gameContract.decreaseAccolites(currentAllegiance, _ticketsToSell);
+        // Remove tickets from msg.sender's balance
+        i_gameContract.decreaseTicketsToValhalla(msg.sender, _ticketsToSell);
+        // If msg.sender sold all tickets then set allegiance to 0
+        if ((startingUserTickets - _ticketsToSell) == 0) {
+            i_gameContract.setPlayerAllegiance(msg.sender, 0);
+        }
+        // Subtract the price of tickets sold from s_tokensDepositedThisGame for this game
+        i_gameContract.decreaseTokensDepositedThisGame(totalPrice);
+        //Take 5% fee
+        i_gameContract.applyProtocolFee((totalPrice * 5) / 100);
+        totalPrice = (totalPrice * 95) / 100;
+
+        i_gameContract.returnGameTokens(msg.sender, totalPrice);
     }
 
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
@@ -225,6 +224,5 @@ contract PhenomenonTicketEngine {
         return i_gameContract.getProphetData(prophetNum);
     }
 
-    // function loseReligion()
     // function redeem/claimTickets() ???
 }
