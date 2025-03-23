@@ -13,11 +13,11 @@ import {Phenomenon} from "./Phenomenon.sol";
  * contract's Mint and Burn Functions.
  */
 contract PhenomenonTicketEngine {
-    error Game__NotAllowed();
-    error Game__NotInProgress();
-    error Game__AddressIsEliminated();
-    error Game__ProphetIsDead();
-    error Game__NotEnoughTicketsOwned();
+    error TicketEng__NotAllowed();
+    error TicketEng__NotInProgress();
+    error TicketEng__AddressIsEliminated();
+    error TicketEng__ProphetIsDead();
+    error TicketEng__NotEnoughTicketsOwned();
 
     struct ProphetData {
         address playerAddress;
@@ -81,7 +81,7 @@ contract PhenomenonTicketEngine {
             senderProphetAddress != msg.sender || (!senderProphetAlive && senderProphetArgs != 99)
                 || _target >= i_gameContract.s_numberOfProphets() || i_gameContract.s_prophetsRemaining() <= 2
         ) {
-            revert Game__NotAllowed();
+            revert TicketEng__NotAllowed();
         }
         uint256 senderAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
         bool currentLeaderAlive;
@@ -92,13 +92,13 @@ contract PhenomenonTicketEngine {
             uint256 prophetZeroArgs;
             (,,, prophetZeroArgs) = getProphetData(0);
             if (senderAllegiance != 0 || (senderAllegiance == 0 && prophetZeroArgs != 99)) {
-                revert Game__AddressIsEliminated();
+                revert TicketEng__AddressIsEliminated();
             }
         }
         // Check if gameStaus is IN_PROGRESS or 1
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
-            revert Game__NotInProgress();
+            revert TicketEng__NotInProgress();
         }
         // High Priests are not given a TicketToValhalla at game start
         uint256 ticketstoValhalla = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
@@ -124,19 +124,19 @@ contract PhenomenonTicketEngine {
         // Make sure game state allows for tickets to be bought
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
-            revert Game__NotInProgress();
+            revert TicketEng__NotInProgress();
         }
         // Prophets cannot buy tickets
         // the ability to 'buy' 0 tickets would allow changing of allegiance
         bool isSenderProphet = i_gameContract.checkProphetList(msg.sender);
         if (isSenderProphet || _ticketsToBuy == 0) {
-            revert Game__NotAllowed();
+            revert TicketEng__NotAllowed();
         }
         // Can't buy tickets of dead or nonexistent prophets
         bool targetProphetAlive;
         (, targetProphetAlive,,) = getProphetData(_prophetNum);
         if (targetProphetAlive == false || _prophetNum >= i_gameContract.s_numberOfProphets()) {
-            revert Game__ProphetIsDead();
+            revert TicketEng__ProphetIsDead();
         }
 
         // Cannot buy/sell  tickets if address eliminated (allegiant to prophet when that prophet is killed)
@@ -150,12 +150,12 @@ contract PhenomenonTicketEngine {
         bool senderAllegianceAlive;
         (, senderAllegianceAlive,,) = getProphetData(senderAllegiance);
         if (senderAllegianceAlive == false && senderTicketCount != 0) {
-            revert Game__AddressIsEliminated();
+            revert TicketEng__AddressIsEliminated();
         }
 
         // Check if player owns any tickets of another prophet
         if (senderTicketCount != 0 && senderAllegiance != _prophetNum) {
-            revert Game__NotAllowed();
+            revert TicketEng__NotAllowed();
         }
 
         uint256 totalPrice = getPrice(i_gameContract.accolites(_prophetNum), _ticketsToBuy);
@@ -173,7 +173,7 @@ contract PhenomenonTicketEngine {
     function loseReligion(uint256 _ticketsToSell) public {
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
-            revert Game__NotInProgress();
+            revert TicketEng__NotInProgress();
         }
         // Can't sell tickets of a dead prophet
         uint256 gameNumber = i_gameContract.s_gameNumber();
@@ -181,16 +181,16 @@ contract PhenomenonTicketEngine {
         bool targetProphetAlive;
         (, targetProphetAlive,,) = getProphetData(currentAllegiance);
         if (targetProphetAlive == false) {
-            revert Game__ProphetIsDead();
+            revert TicketEng__ProphetIsDead();
         }
         // Prophets cannot sell tickets
         if (i_gameContract.prophetList(gameNumber, msg.sender)) {
-            revert Game__NotAllowed();
+            revert TicketEng__NotAllowed();
         }
         // User cannot sell more tickets than they own
         uint256 startingUserTickets = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
         if (_ticketsToSell > startingUserTickets || _ticketsToSell == 0) {
-            revert Game__NotEnoughTicketsOwned();
+            revert TicketEng__NotEnoughTicketsOwned();
         }
         // Get price of selling tickets
         uint256 totalPrice = getPrice(i_gameContract.accolites(currentAllegiance) - _ticketsToSell, _ticketsToSell);
@@ -216,15 +216,15 @@ contract PhenomenonTicketEngine {
     function claimTickets(uint256 _gameNumber) public {
         uint256 currentGameNumber = i_gameContract.s_gameNumber();
         if (_gameNumber >= currentGameNumber) {
-            revert Game__NotAllowed();
+            revert TicketEng__NotAllowed();
         }
         // TurnManager sets currentProphetTurn to game winner, so use this to check if allegiance is to the winner
         if (i_gameContract.allegiance(_gameNumber, msg.sender) != i_gameContract.currentProphetTurn(_gameNumber)) {
-            revert Game__AddressIsEliminated();
+            revert TicketEng__AddressIsEliminated();
         }
         uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, msg.sender);
         if (startingUserTickets == 0) {
-            revert Game__NotEnoughTicketsOwned();
+            revert TicketEng__NotEnoughTicketsOwned();
         }
 
         uint256 tokensToSend = startingUserTickets * i_gameContract.tokensPerTicket(_gameNumber);

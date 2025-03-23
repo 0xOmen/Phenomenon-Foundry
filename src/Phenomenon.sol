@@ -21,15 +21,12 @@ contract Phenomenon {
     error Game__AlreadyRegistered();
     error Game__ProphetNumberError();
     error Game__NotInProgress();
-    error Game__ProphetIsDead();
     error Game__NotAllowed();
     error Game__NotEnoughTicketsOwned();
-    error Game__AddressIsEliminated();
     error Game__ProphetNotFree();
     error Game__OutOfTurn();
     error Game__OnlyOwner();
     error Game__OnlyController();
-    error Game__NoRandomNumber();
     error Game__MinimumTimeNotPassed();
     ///////////////////////////// Types ///////////////////////////////////
 
