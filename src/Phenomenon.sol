@@ -8,7 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Phenomenon
  * @author 0x-Omen.eth
  *
- * Phenomenon is a game of survival, charisma, and wit. Prophets win by gaining accolites
+ * Phenomenon is a game of survival, charisma, and wit. Prophets win by converting accolites
  * and successfully navigating the game design. The last prophet alive, and any of their
  * accolites, wins the game.
  *
@@ -80,6 +80,8 @@ contract Phenomenon {
     ProphetData[] public prophets;
     GameState public gameStatus;
     mapping(uint256 => uint256) public currentProphetTurn;
+    uint256 public s_totalTickets;
+    uint256 private encryptor;
 
     /// @notice mapping of addresses that have signed up to play by game: prophetList[s_gameNumber][address]
     /// @dev returns 0 if not signed up and 1 if address has signed up
@@ -108,11 +110,8 @@ contract Phenomenon {
 
     /// @notice tracks how many tickets there are in the game (accolites + high priests)
     /// @dev gets set to 0 every game in reset()
-    uint256 public s_totalTickets;
-    uint256 encryptor;
 
     ////////////////////////// Events ////////////////////////////
-    event prophetEnteredGame(uint256 indexed prophetNumber, address indexed sender, uint256 indexed gameNumber);
     event gameStarted(uint256 indexed gameNumber);
     event miracleAttempted(bool indexed isSuccess, uint256 indexed currentProphetTurn);
     event smiteAttempted(uint256 indexed target, bool indexed isSuccess, uint256 indexed currentProphetTurn);
@@ -180,32 +179,22 @@ contract Phenomenon {
         s_entranceFee = newFee;
     }
 
-    function enterGame() public {
-        if (gameStatus != GameState.OPEN) {
-            revert Game__NotOpen();
-        }
-        if (prophets.length >= s_numberOfProphets) {
-            revert Game__Full();
-        }
-        if (prophetList[s_gameNumber][msg.sender]) {
-            revert Game__AlreadyRegistered();
-        }
+    function setMaxInterval(uint256 _newMaxInterval) public onlyOwner {
+        s_maxInterval = _newMaxInterval;
+    }
+
+    function setMinInterval(uint256 _newMinInterval) public onlyOwner {
+        s_minInterval = _newMinInterval;
+    }
+
+    function registerProphet(address _prophet) public onlyContract(s_gameplayEngine) {
         ProphetData memory newProphet;
-        newProphet.playerAddress = msg.sender;
+        newProphet.playerAddress = _prophet;
         newProphet.isAlive = true;
         newProphet.isFree = true;
         prophets.push(newProphet);
-        s_tokensDepositedThisGame += s_entranceFee;
-        prophetList[s_gameNumber][msg.sender] = true;
+        prophetList[s_gameNumber][_prophet] = true;
         s_prophetsRemaining++;
-
-        emit prophetEnteredGame(s_prophetsRemaining - 1, msg.sender, s_gameNumber);
-
-        if (s_prophetsRemaining == s_numberOfProphets) {
-            startGame();
-        }
-
-        IERC20(GAME_TOKEN).transferFrom(msg.sender, address(this), s_entranceFee);
     }
 
     function startGame() public {
@@ -482,6 +471,10 @@ contract Phenomenon {
         accolites[target] -= amount;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////// TOKNE FUNCTIONS //////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
     function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
         s_tokensDepositedThisGame += amount;
     }
@@ -518,14 +511,6 @@ contract Phenomenon {
 
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
         IERC20(_token).transfer(_destination, _amount);
-    }
-
-    function setMaxInterval(uint256 _newMaxInterval) public onlyOwner {
-        s_maxInterval = _newMaxInterval;
-    }
-
-    function setMinInterval(uint256 _newMinInterval) public onlyOwner {
-        s_minInterval = _newMinInterval;
     }
 
     function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
