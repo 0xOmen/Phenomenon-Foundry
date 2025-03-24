@@ -8,9 +8,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Phenomenon
  * @author 0x-Omen.eth
  *
- * Phenomenon is a game of survival, charisma, and wit. Prophets win by converting accolites
+ * Phenomenon is a game of survival, charisma, and wit. Prophets win by converting acolytes
  * and successfully navigating the game design. The last prophet alive, and any of their
- * accolites, wins the game.
+ * acolytes, wins the game.
  *
  * @dev This is the main Game contract that stores game state.
  */
@@ -101,14 +101,14 @@ contract Phenomenon {
 
     /// @notice tracks how many tickets to heaven have been sold for each Prophet
     /// @dev gets 'deleted' every game in reset()
-    uint256[] public accolites;
+    uint256[] public acolytes;
 
     /// @notice tracks how many high priests each prophet has
     /// @notice high priests cannot buy or sell tickets but can change allegiance
     /// @dev gets 'deleted' every game in reset()
     uint256[] public highPriestsByProphet;
 
-    /// @notice tracks how many tickets there are in the game (accolites + high priests)
+    /// @notice tracks how many tickets there are in the game (acolytes + high priests)
     /// @dev gets set to 0 every game in reset()
 
     ////////////////////////// Events ////////////////////////////
@@ -197,6 +197,14 @@ contract Phenomenon {
         s_prophetsRemaining++;
     }
 
+    function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
+        s_randomnessSeed = randomnessSeed;
+    }
+
+    function setProphetTurn(uint256 _prophetNum) public onlyContract(s_gameplayEngine) {
+        currentProphetTurn[s_gameNumber] = _prophetNum;
+    }
+
     function startGame() public {
         if (gameStatus != GameState.OPEN) {
             revert Game__NotOpen();
@@ -223,8 +231,8 @@ contract Phenomenon {
                 ticketsToValhalla[s_gameNumber][prophets[_prophet].playerAddress] = 1;
                 // Increment total tickets by 1
                 s_totalTickets++;
-                // This loop initializes accolites[]
-                // each loop pushes the number of accolites/tickets sold into the prophet slot of the array
+                // This loop initializes acolytes[]
+                // each loop pushes the number of acolytes/tickets sold into the prophet slot of the array
                 highPriestsByProphet.push(1);
             } else {
                 highPriestsByProphet.push(0);
@@ -232,7 +240,7 @@ contract Phenomenon {
                 prophets[_prophet].isAlive = false;
                 prophets[_prophet].args = 99;
             }
-            accolites.push(0);
+            acolytes.push(0);
         }
         turnManager();
         gameStatus = GameState.IN_PROGRESS;
@@ -272,10 +280,10 @@ contract Phenomenon {
         } else {
             // kill prophet
             prophets[currentProphetTurn[s_gameNumber]].isAlive = false;
-            // Remove tickets held by Prophet's accolite from totalTickets for TicketShare calc
-            // Should this be plus or minus? I think it should be accolites plus highPriests
+            // Remove tickets held by Prophet's acolyte from totalTickets for TicketShare calc
+            // Should this be plus or minus? I think it should be acolytes plus highPriests
             s_totalTickets -=
-                (accolites[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]);
+                (acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]);
             // decrease number of remaining prophets
             s_prophetsRemaining--;
         }
@@ -299,8 +307,8 @@ contract Phenomenon {
         ) {
             // kill target prophet
             prophets[_target].isAlive = false;
-            // Remove target Prophet's accolite tickets from totalTickets for TicketShare calc
-            s_totalTickets -= (accolites[_target] + highPriestsByProphet[_target]);
+            // Remove target Prophet's acolyte tickets from totalTickets for TicketShare calc
+            s_totalTickets -= (acolytes[_target] + highPriestsByProphet[_target]);
             // decrease number of remaining prophets
             s_prophetsRemaining--;
         } else {
@@ -308,9 +316,9 @@ contract Phenomenon {
                 prophets[currentProphetTurn[s_gameNumber]].isFree = false;
             } else {
                 prophets[currentProphetTurn[s_gameNumber]].isAlive = false;
-                // Remove Prophet's accolite tickets from totalTickets for TicketShare calc
+                // Remove Prophet's acolyte tickets from totalTickets for TicketShare calc
                 s_totalTickets -= (
-                    accolites[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]
+                    acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]
                 );
                 // decrease number of remaining prophets
                 s_prophetsRemaining--;
@@ -345,8 +353,8 @@ contract Phenomenon {
             } else {
                 // kill prophet
                 prophets[_target].isAlive = false;
-                // Remove Prophet's accolite tickets from totalTickets for TicketShare calc
-                s_totalTickets -= (accolites[_target] + highPriestsByProphet[_target]);
+                // Remove Prophet's acolyte tickets from totalTickets for TicketShare calc
+                s_totalTickets -= (acolytes[_target] + highPriestsByProphet[_target]);
                 // decrease number of remaining prophets
                 s_prophetsRemaining--;
                 emit accusation(true, false, currentProphetTurn[s_gameNumber], _target);
@@ -383,7 +391,7 @@ contract Phenomenon {
         s_prophetsRemaining = 0;
         s_numberOfProphets = _numberOfPlayers;
 
-        delete accolites; //array
+        delete acolytes; //array
         delete highPriestsByProphet; //array
         s_totalTickets = 0;
         emit gameReset(s_gameNumber);
@@ -398,7 +406,7 @@ contract Phenomenon {
             }
 
             uint256 winningTokenCount =
-                accolites[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]];
+                acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]];
             if (winningTokenCount != 0) {
                 s_ownerTokenBalance += (s_tokensDepositedThisGame * 5) / 100;
                 s_tokensDepositedThisGame = (s_tokensDepositedThisGame * 95) / 100;
@@ -432,7 +440,7 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
         if (s_totalTickets == 0) return 0;
-        else return ((accolites[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
+        else return ((acolytes[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
     }
 
     function increaseHighPriest(uint256 target) public onlyContract(s_ticketEngine) {
@@ -464,11 +472,11 @@ contract Phenomenon {
     }
 
     function increaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
-        accolites[target] += amount;
+        acolytes[target] += amount;
     }
 
     function decreaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
-        accolites[target] -= amount;
+        acolytes[target] -= amount;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////

@@ -158,7 +158,7 @@ contract PhenomenonTicketEngine {
             revert TicketEng__NotAllowed();
         }
 
-        uint256 totalPrice = getPrice(i_gameContract.accolites(_prophetNum), _ticketsToBuy);
+        uint256 totalPrice = getPrice(i_gameContract.acolytes(_prophetNum), _ticketsToBuy);
 
         i_gameContract.increaseTicketsToValhalla(msg.sender, _ticketsToBuy);
         i_gameContract.increaseAccolites(_prophetNum, _ticketsToBuy);
@@ -193,7 +193,7 @@ contract PhenomenonTicketEngine {
             revert TicketEng__NotEnoughTicketsOwned();
         }
         // Get price of selling tickets
-        uint256 totalPrice = getPrice(i_gameContract.accolites(currentAllegiance) - _ticketsToSell, _ticketsToSell);
+        uint256 totalPrice = getPrice(i_gameContract.acolytes(currentAllegiance) - _ticketsToSell, _ticketsToSell);
         emit religionLost(currentAllegiance, _ticketsToSell, totalPrice, msg.sender);
         // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
         i_gameContract.decreaseTotalTickets(_ticketsToSell);

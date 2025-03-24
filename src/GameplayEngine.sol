@@ -17,6 +17,7 @@ contract GameplayEngine {
     error GameEng__NotOpen();
     error GameEng__Full();
     error GameEng__AlreadyRegistered();
+    error GameEng__ProphetNumberError();
 
     //////////////////////// State Variables ////////////////////////
     Phenomenon private immutable i_gameContract;
@@ -41,7 +42,7 @@ contract GameplayEngine {
     function enterGame() public {
         // Check that game is Open for registration
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
-        if (gameStatus != 1) {
+        if (gameStatus != 0) {
             revert GameEng__NotOpen();
         }
         // Check that game is not full
@@ -63,14 +64,58 @@ contract GameplayEngine {
         emit prophetEnteredGame(prophetsRegistered - 1, msg.sender, gameNumber);
 
         if ((prophetsRegistered + 1) == numberOfProphets) {
-            startGame();
+            startGame(prophetsRegistered, numberOfProphets);
         }
 
         IERC20(i_gameContract.GAME_TOKEN()).transferFrom(msg.sender, address(i_gameContract), entranceFee);
     }
 
-    // function enterGame()
-    // function startGame()
+    function startGame(uint256 prophetsRegistered, uint256 numberOfProphets) internal {
+        /* Not needed if internal and only called from enterGame() as it is checked there
+        if (gameStatus != 0) {
+            revert Game__NotOpen();
+        }
+        */
+        if (prophetsRegistered != numberOfProphets) {
+            revert GameEng__ProphetNumberError();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        uint256 s_randomnessSeed = uint256(blockhash(block.number - 1));
+        i_gameContract.setRandomnessSeed(s_randomnessSeed);
+
+        // semi-randomly select which prophet goes first
+        i_gameContract.setCurrentProphetTurn(block.timestamp % numberOfProphets);
+        // Check if prophet is chosenOne, if not then randomly assign to priest or prophet
+        // Add Chainlink call here
+        for (uint256 _prophet = 0; _prophet < s_numberOfProphets; _prophet++) {
+            if (
+                currentProphetTurn[s_gameNumber]
+                    == (s_randomnessSeed / (42069420690990990091337 * encryptor)) % s_numberOfProphets
+                    || ((uint256(blockhash(block.number - 1 - _prophet))) % 100) >= 15
+            ) {
+                // assign allegiance to self
+                allegiance[s_gameNumber][prophets[_prophet].playerAddress] = _prophet;
+                // give Prophet one of his own tickets
+                ticketsToValhalla[s_gameNumber][prophets[_prophet].playerAddress] = 1;
+                // Increment total tickets by 1
+                s_totalTickets++;
+                // This loop initializes acolytes[]
+                // each loop pushes the number of acolytes/tickets sold into the prophet slot of the array
+                highPriestsByProphet.push(1);
+            } else {
+                highPriestsByProphet.push(0);
+                s_prophetsRemaining--;
+                prophets[_prophet].isAlive = false;
+                prophets[_prophet].args = 99;
+            }
+            acolytes.push(0);
+        }
+        turnManager();
+        gameStatus = GameState.IN_PROGRESS;
+        emit gameStarted(s_gameNumber);
+    }
+
     // function ruleCheck()
     // function performMiracle()
     // function attemptSmite()
