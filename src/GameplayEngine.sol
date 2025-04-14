@@ -24,11 +24,15 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     error GameEng__Full();
     error GameEng__AlreadyRegistered();
     error GameEng__ProphetNumberError();
+    error Game__MinimumTimeNotPassed();
+    error Game__NotInProgress();
+    error Game__OutOfTurn();
+    error Game__NotAllowed();
+    error Game__ProphetNotFree();
     error UnexpectedRequestID(bytes32 requestId);
 
     //////////////////////// State Variables ////////////////////////
     Phenomenon private immutable i_gameContract;
-    address private owner;
     string[] args;
 
     bytes32 public s_lastFunctionRequestId;
@@ -45,25 +49,21 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     bytes32 donID = 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000;
 
     event prophetEnteredGame(uint256 indexed prophetNumber, address indexed sender, uint256 indexed gameNumber);
+    event gameStarted(uint256 indexed gameNumber);
+    event miracleAttempted(bool indexed isSuccess, uint256 indexed currentProphetTurn);
+    event smiteAttempted(uint256 indexed target, bool indexed isSuccess, uint256 indexed currentProphetTurn);
+    event accusation(
+        bool indexed isSuccess, bool targetIsAlive, uint256 indexed currentProphetTurn, uint256 indexed _target
+    );
     event Response(bytes32 indexed requestId, string character, bytes response, bytes err);
 
     constructor(address _gameContract, string memory _source, uint64 _subscriptionId)
         FunctionsClient(router)
         ConfirmedOwner(msg.sender)
     {
-        owner = msg.sender;
         source = _source;
         subscriptionId = _subscriptionId;
         i_gameContract = Phenomenon(_gameContract);
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    function changeOwner(address newOwner) public onlyOwner {
-        owner = newOwner;
     }
 
     function enterGame() public {
@@ -73,7 +73,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             revert GameEng__NotOpen();
         }
         // Check that game is not full
-        uint256 prophetsRegistered = i_gameContract.prophets.length();
+        uint256 prophetsRegistered = i_gameContract.s_prophetsRemaining();
         uint256 numberOfProphets = i_gameContract.s_numberOfProphets();
         if (prophetsRegistered >= numberOfProphets) {
             revert GameEng__Full();
@@ -94,7 +94,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             startGame(prophetsRegistered, numberOfProphets);
         }
 
-        IERC20(i_gameContract.GAME_TOKEN()).transferFrom(msg.sender, address(i_gameContract), entranceFee);
+        IERC20(i_gameContract.getGameToken()).transferFrom(msg.sender, address(i_gameContract), entranceFee);
     }
 
     function startGame(uint256 prophetsRegistered, uint256 numberOfProphets) internal {
@@ -115,10 +115,71 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         i_gameContract.setRandomnessSeed(s_randomnessSeed);
 
         // 3. semi-randomly select which prophet goes first
-        i_gameContract.setCurrentProphetTurn(block.timestamp % numberOfProphets);
+        i_gameContract.setProphetTurn(block.timestamp % numberOfProphets);
         // Check if prophet is chosenOne, if not then randomly assign to priest or prophet
         // Add Chainlink call here
         sendRequest(3);
+    }
+
+    function performMiracle() public {
+        ruleCheck();
+        sendRequest(0);
+    }
+
+    function forceMiracle() public {
+        // Maximum time interval must have passed from last turn
+        if (block.timestamp < i_gameContract.s_lastRoundTimestamp() + i_gameContract.s_maxInterval()) {
+            revert Game__MinimumTimeNotPassed();
+        }
+        // Game must be in progress
+        if (uint256(i_gameContract.gameStatus()) != 1) {
+            revert Game__NotInProgress();
+        }
+        sendRequest(0);
+    }
+
+    function attemptSmite(uint256 _target) public {
+        ruleCheck();
+        (, bool targetIsAlive,,) = i_gameContract.getProphetData(_target);
+        if (_target >= i_gameContract.s_numberOfProphets() || targetIsAlive == false) {
+            revert Game__NotAllowed();
+        }
+
+        i_gameContract.updateProphetArgs(i_gameContract.getCurrentProphetTurn(), _target);
+        sendRequest(1);
+    }
+
+    function accuseOfBlasphemy(uint256 _target) public {
+        ruleCheck();
+        (, bool targetIsAlive,,) = i_gameContract.getProphetData(_target);
+        // Prophet to accuse must be alive and exist
+        if (_target >= i_gameContract.s_numberOfProphets() || targetIsAlive == false) {
+            revert Game__NotAllowed();
+        }
+        // Message Sender must be free prophet to accuse
+        uint256 prophetNum = i_gameContract.getCurrentProphetTurn();
+        (,, bool playerIsFree,) = i_gameContract.getProphetData(prophetNum);
+        if (playerIsFree == false) {
+            revert Game__ProphetNotFree();
+        }
+        i_gameContract.updateProphetArgs(i_gameContract.getCurrentProphetTurn(), _target);
+        sendRequest(2);
+    }
+
+    function ruleCheck() internal view {
+        // Minimum time interval must have passed from last turn
+        if (block.timestamp < i_gameContract.s_lastRoundTimestamp() + i_gameContract.s_minInterval()) {
+            revert Game__MinimumTimeNotPassed();
+        }
+        // Game must be in progress
+        if (uint256(i_gameContract.gameStatus()) != 1) {
+            revert Game__NotInProgress();
+        }
+        // Sending address must be their turn
+        (address currentProphetAddress,,,) = i_gameContract.getProphetData(i_gameContract.getCurrentProphetTurn());
+        if (msg.sender != currentProphetAddress) {
+            revert Game__OutOfTurn();
+        }
     }
 
     /**
@@ -128,7 +189,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     function setArgs(uint256 _action) internal {
         delete args;
         uint256 currentProphetTurn = i_gameContract.getCurrentProphetTurn();
-        args.push(Strings.toString(i_gameContract.s_randomnessSeed())); //roleVRFSeed
+        args.push(Strings.toString(i_gameContract.getRandomnessSeed())); //roleVRFSeed
         args.push(Strings.toString(i_gameContract.s_numberOfProphets())); //Number_of_Prophets
         args.push(Strings.toString(_action)); //_action
         args.push(Strings.toString(currentProphetTurn)); //currentProphetTurn
@@ -179,14 +240,20 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                 i_gameContract.updateProphetLife(_currentProphetTurn, false);
                 // decrease number of remaining prophets
                 i_gameContract.updateProphetsRemaining(0, 1);
+                emit miracleAttempted(false, _currentProphetTurn);
             }
             // Logic for successful miracle
             else if (response[0] == "1") {
                 // if in jail, release from jail
                 i_gameContract.updateProphetFreedom(_currentProphetTurn, true);
+                emit miracleAttempted(true, _currentProphetTurn);
             }
             // Logic for an unsuccessful smite
-            else if (response[0] == "2") {}
+            else if (response[0] == "2") {
+                (,,, uint256 target) = i_gameContract.getProphetData(_currentProphetTurn);
+                i_gameContract.updateProphetFreedom(_currentProphetTurn, false);
+                emit smiteAttempted(target, false, _currentProphetTurn);
+            }
             // Logic for a successful smite
             else if (response[0] == "3") {
                 (,,, uint256 target) = i_gameContract.getProphetData(_currentProphetTurn);
@@ -194,12 +261,14 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                 i_gameContract.updateProphetLife(target, false);
                 // Decrease number of remaining prophets by one
                 i_gameContract.updateProphetsRemaining(0, 1);
+                emit smiteAttempted(target, true, _currentProphetTurn);
             }
             // Logic for unsuccessful accusation
             else if (response[0] == "4") {
                 (,,, uint256 target) = i_gameContract.getProphetData(_currentProphetTurn);
                 // if in jail, release from jail
                 i_gameContract.updateProphetFreedom(target, true);
+                emit accusation(false, true, _currentProphetTurn, target);
             }
             // Logic for successful accusation
             else if (response[0] == "5") {
@@ -207,11 +276,13 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                 (,, bool targetIsFree,) = i_gameContract.getProphetData(target);
                 if (targetIsFree) {
                     i_gameContract.updateProphetFreedom(target, false);
+                    emit accusation(true, true, _currentProphetTurn, target);
                 } else {
                     // Kill target Prophet
                     i_gameContract.updateProphetLife(target, false);
                     // Decrease number of remaining prophets by one
                     i_gameContract.updateProphetsRemaining(0, 1);
+                    emit accusation(true, false, _currentProphetTurn, target);
                 }
             }
         }
@@ -227,15 +298,11 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                     i_gameContract.updateProphetArgs(_prophet, 99);
                 } else {}
             }
+            emit gameStarted(i_gameContract.s_gameNumber());
         }
         i_gameContract.changeGameStatus(1);
-        turnManager();
+        i_gameContract.turnManager();
     }
-
-    // function ruleCheck()
-    // function performMiracle()
-    // function attemptSmite()
-    // function accuseOfBlasphemy()
 
     // function reset() ???
     // function turnManager() ???

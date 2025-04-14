@@ -16,18 +16,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 contract Phenomenon {
     ///////////////////////////// Errors ///////////////////////////////////
-    error Game__NotOpen();
-    error Game__Full();
-    error Game__AlreadyRegistered();
     error Game__ProphetNumberError();
     error Game__NotInProgress();
     error Game__NotAllowed();
     error Game__NotEnoughTicketsOwned();
-    error Game__ProphetNotFree();
-    error Game__OutOfTurn();
     error Game__OnlyOwner();
     error Game__OnlyController();
-    error Game__MinimumTimeNotPassed();
     ///////////////////////////// Types ///////////////////////////////////
 
     enum GameState {
@@ -48,18 +42,16 @@ contract Phenomenon {
 
     /// @notice Maximum interval a player has take a turn before others can trigger a miracle.
     /// @dev Set interval to 3 minutes = 180
-    uint256 s_maxInterval;
+    uint256 public s_maxInterval;
 
     /// @notice Wait time before next player can take a turn. This is optional.
-    uint256 s_minInterval;
+    uint256 public s_minInterval;
 
-    uint256 s_entranceFee;
-    ////////// ticketMultipler will need to be deleted after refacto/////////
-    uint256 ticketMultiplier;
+    uint256 public s_entranceFee;
 
     /// @notice The number of prophets/players needed to start the game
     uint16 public s_numberOfProphets;
-    address private immutable GAME_TOKEN;
+    address private GAME_TOKEN;
 
     /// @notice The current game number
     /// @dev This is incremented every time a game ends in reset()
@@ -82,7 +74,6 @@ contract Phenomenon {
     GameState public gameStatus;
     mapping(uint256 => uint256) public currentProphetTurn;
     uint256 public s_totalTickets;
-    uint256 private encryptor;
 
     /// @notice mapping of addresses that have signed up to play by game: prophetList[s_gameNumber][address]
     /// @dev returns 0 if not signed up and 1 if address has signed up
@@ -113,12 +104,6 @@ contract Phenomenon {
     /// @dev gets set to 0 every game in reset()
 
     ////////////////////////// Events ////////////////////////////
-    event gameStarted(uint256 indexed gameNumber);
-    event miracleAttempted(bool indexed isSuccess, uint256 indexed currentProphetTurn);
-    event smiteAttempted(uint256 indexed target, bool indexed isSuccess, uint256 indexed currentProphetTurn);
-    event accusation(
-        bool indexed isSuccess, bool targetIsAlive, uint256 indexed currentProphetTurn, uint256 indexed _target
-    );
     event gameEnded(uint256 indexed gameNumber, uint256 indexed tokensPerTicket, uint256 indexed currentProphetTurn);
     event gameReset(uint256 indexed newGameNumber);
     event currentTurn(uint256 indexed nextProphetTurn);
@@ -151,7 +136,6 @@ contract Phenomenon {
         s_minInterval = _minInterval;
         s_entranceFee = _entranceFee;
         s_numberOfProphets = _numProphets;
-        encryptor = 8;
         s_gameNumber = 0;
         gameStatus = GameState.OPEN;
         s_lastRoundTimestamp = block.timestamp;
@@ -180,6 +164,10 @@ contract Phenomenon {
         s_entranceFee = newFee;
     }
 
+    function changeGameToken(address _gameToken) public onlyOwner {
+        GAME_TOKEN = _gameToken;
+    }
+
     function setMaxInterval(uint256 _newMaxInterval) public onlyOwner {
         s_maxInterval = _newMaxInterval;
     }
@@ -190,6 +178,10 @@ contract Phenomenon {
 
     function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
         s_randomnessSeed = randomnessSeed;
+    }
+
+    function getRandomnessSeed() public view returns (uint256) {
+        return s_randomnessSeed;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,128 +249,6 @@ contract Phenomenon {
         prophets[_prophetNum].args = _args;
     }
 
-    function ruleCheck() internal view {
-        // Minimal time interval must have passed from last turn
-        if (block.timestamp < s_lastRoundTimestamp + s_minInterval) {
-            revert Game__MinimumTimeNotPassed();
-        }
-        // Game must be in progress
-        if (gameStatus != GameState.IN_PROGRESS) {
-            revert Game__NotInProgress();
-        }
-        // Sending address must be their turn
-        if (msg.sender != prophets[currentProphetTurn[s_gameNumber]].playerAddress) {
-            revert Game__OutOfTurn();
-        }
-    }
-
-    function performMiracle() public {
-        // If turn time interval has passed then anyone can call performMiracle on current Prophet's turn
-        // What if this gets called between games?
-        if (block.timestamp < s_lastRoundTimestamp + s_maxInterval) {
-            ruleCheck();
-        }
-
-        if (
-            currentProphetTurn[s_gameNumber]
-                == (s_randomnessSeed / (42069420690990990091337 * encryptor)) % s_numberOfProphets
-                || ((block.timestamp) % 100) + (getTicketShare(currentProphetTurn[s_gameNumber]) / 10) >= 25
-        ) {
-            if (prophets[currentProphetTurn[s_gameNumber]].isFree == false) {
-                prophets[currentProphetTurn[s_gameNumber]].isFree = true;
-            }
-        } else {
-            // kill prophet
-            prophets[currentProphetTurn[s_gameNumber]].isAlive = false;
-            // Remove tickets held by Prophet's acolyte from totalTickets for TicketShare calc
-            // Should this be plus or minus? I think it should be acolytes plus highPriests
-            s_totalTickets -=
-                (acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]);
-            // decrease number of remaining prophets
-            s_prophetsRemaining--;
-        }
-        emit miracleAttempted(prophets[currentProphetTurn[s_gameNumber]].isAlive, currentProphetTurn[s_gameNumber]);
-        turnManager();
-    }
-
-    // game needs to be playing, prophet must be alive
-    function attemptSmite(uint256 _target) public {
-        ruleCheck();
-        // Prophet to smite must be alive and exist
-        if (_target >= s_numberOfProphets || prophets[_target].isAlive == false) {
-            revert Game__NotAllowed();
-        }
-
-        prophets[currentProphetTurn[s_gameNumber]].args = _target;
-        if (
-            currentProphetTurn[s_gameNumber]
-                == (s_randomnessSeed / (42069420690990990091337 * encryptor)) % s_numberOfProphets
-                || 1 + (uint256(block.timestamp % 100) + (getTicketShare(currentProphetTurn[s_gameNumber]) / 2)) >= 90
-        ) {
-            // kill target prophet
-            prophets[_target].isAlive = false;
-            // Remove target Prophet's acolyte tickets from totalTickets for TicketShare calc
-            s_totalTickets -= (acolytes[_target] + highPriestsByProphet[_target]);
-            // decrease number of remaining prophets
-            s_prophetsRemaining--;
-        } else {
-            if (prophets[currentProphetTurn[s_gameNumber]].isFree == true) {
-                prophets[currentProphetTurn[s_gameNumber]].isFree = false;
-            } else {
-                prophets[currentProphetTurn[s_gameNumber]].isAlive = false;
-                // Remove Prophet's acolyte tickets from totalTickets for TicketShare calc
-                s_totalTickets -= (
-                    acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]]
-                );
-                // decrease number of remaining prophets
-                s_prophetsRemaining--;
-            }
-        }
-        emit smiteAttempted(_target, !prophets[_target].isAlive, currentProphetTurn[s_gameNumber]);
-        turnManager();
-    }
-
-    function accuseOfBlasphemy(uint256 _target) public {
-        ruleCheck();
-        // Prophet to accuse must be alive and exist
-        if (_target >= s_numberOfProphets || prophets[_target].isAlive == false) {
-            revert Game__NotAllowed();
-        }
-        // Message Sender must be living & free prophet on their turn
-        if (prophets[currentProphetTurn[s_gameNumber]].isFree == false) {
-            revert Game__ProphetNotFree();
-        }
-        prophets[currentProphetTurn[s_gameNumber]].args = _target;
-
-        if (
-            1
-                + (
-                    uint256((block.timestamp * currentProphetTurn[s_gameNumber]) % 100)
-                        + getTicketShare(currentProphetTurn[s_gameNumber])
-                ) > 90
-        ) {
-            if (prophets[_target].isFree == true) {
-                prophets[_target].isFree = false;
-                emit accusation(true, true, currentProphetTurn[s_gameNumber], _target);
-            } else {
-                // kill prophet
-                prophets[_target].isAlive = false;
-                // Remove Prophet's acolyte tickets from totalTickets for TicketShare calc
-                s_totalTickets -= (acolytes[_target] + highPriestsByProphet[_target]);
-                // decrease number of remaining prophets
-                s_prophetsRemaining--;
-                emit accusation(true, false, currentProphetTurn[s_gameNumber], _target);
-            }
-        } else {
-            // set target free
-            prophets[_target].isFree = true;
-            // put failed accuser in jail
-            prophets[currentProphetTurn[s_gameNumber]].isFree = false;
-            emit accusation(false, true, currentProphetTurn[s_gameNumber], _target);
-        }
-        turnManager();
-    }
-
     // Allow s_numberOfProphets to be changed in Hackathon but maybe don't let this happen in Production?
     // There may be a griefing vector I haven't thought of
     function reset(uint16 _numberOfPlayers) public {
@@ -407,7 +277,7 @@ contract Phenomenon {
         emit gameReset(s_gameNumber);
     }
 
-    function turnManager() internal {
+    function turnManager() public onlyContract(s_gameplayEngine) {
         bool stillFinding = true;
         if (s_prophetsRemaining == 1) {
             gameStatus = GameState.ENDED;
@@ -531,5 +401,9 @@ contract Phenomenon {
 
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
         IERC20(_token).transfer(_destination, _amount);
+    }
+
+    function getGameToken() public view returns (address) {
+        return GAME_TOKEN;
     }
 }
