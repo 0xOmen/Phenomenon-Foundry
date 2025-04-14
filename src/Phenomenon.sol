@@ -33,6 +33,7 @@ contract Phenomenon {
     enum GameState {
         OPEN,
         IN_PROGRESS,
+        AWAITING_RESPONSE,
         PAUSED,
         ENDED
     }
@@ -187,6 +188,13 @@ contract Phenomenon {
         s_minInterval = _newMinInterval;
     }
 
+    function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
+        s_randomnessSeed = randomnessSeed;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    //////////// PROPHET FUNCTIONS /////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////
     function registerProphet(address _prophet) public onlyContract(s_gameplayEngine) {
         ProphetData memory newProphet;
         newProphet.playerAddress = _prophet;
@@ -195,56 +203,58 @@ contract Phenomenon {
         prophets.push(newProphet);
         prophetList[s_gameNumber][_prophet] = true;
         s_prophetsRemaining++;
+        uint256 prophetNum = prophets.length - 1;
+        // assign allegiance to self
+        allegiance[s_gameNumber][_prophet] = prophetNum;
+        // give Prophet one of his own tickets
+        ticketsToValhalla[s_gameNumber][prophets[prophetNum].playerAddress] = 1;
+        // Increment total tickets by 1
+        s_totalTickets++;
+        // This initializes acolytes[]
+        // Push the number of acolytes/tickets sold into the prophet slot of the array
+        acolytes.push(1);
     }
 
-    function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
-        s_randomnessSeed = randomnessSeed;
+    function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
+        return (
+            prophets[_prophetNum].playerAddress,
+            prophets[_prophetNum].isAlive,
+            prophets[_prophetNum].isFree,
+            prophets[_prophetNum].args
+        );
+    }
+
+    function updateProphetLife(uint256 _prophetNum, bool _isAlive) public onlyContract(s_gameplayEngine) {
+        prophets[_prophetNum].isAlive = _isAlive;
+    }
+
+    function updateProphetFreedom(uint256 _prophetNum, bool _isFree) public onlyContract(s_gameplayEngine) {
+        prophets[_prophetNum].isFree = _isFree;
+    }
+
+    function checkProphetList(address target) public view returns (bool) {
+        return prophetList[s_gameNumber][target];
     }
 
     function setProphetTurn(uint256 _prophetNum) public onlyContract(s_gameplayEngine) {
         currentProphetTurn[s_gameNumber] = _prophetNum;
     }
 
-    function startGame() public {
-        if (gameStatus != GameState.OPEN) {
-            revert Game__NotOpen();
-        }
-        if (prophets.length != s_numberOfProphets) {
-            revert Game__ProphetNumberError();
-        }
+    function getCurrentProphetTurn() public view returns (uint256) {
+        return currentProphetTurn[s_gameNumber];
+    }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        s_randomnessSeed = uint256(blockhash(block.number - 1));
+    function changeGameStatus(uint256 _status) public onlyContract(s_gameplayEngine) {
+        gameStatus = GameState(_status);
+    }
 
-        // semi-randomly select which prophet goes first
-        currentProphetTurn[s_gameNumber] = block.timestamp % s_numberOfProphets;
-        // Check if prophet is chosenOne, if not then randomly assign to priest or prophet
-        for (uint256 _prophet = 0; _prophet < s_numberOfProphets; _prophet++) {
-            if (
-                currentProphetTurn[s_gameNumber]
-                    == (s_randomnessSeed / (42069420690990990091337 * encryptor)) % s_numberOfProphets
-                    || ((uint256(blockhash(block.number - 1 - _prophet))) % 100) >= 15
-            ) {
-                // assign allegiance to self
-                allegiance[s_gameNumber][prophets[_prophet].playerAddress] = _prophet;
-                // give Prophet one of his own tickets
-                ticketsToValhalla[s_gameNumber][prophets[_prophet].playerAddress] = 1;
-                // Increment total tickets by 1
-                s_totalTickets++;
-                // This loop initializes acolytes[]
-                // each loop pushes the number of acolytes/tickets sold into the prophet slot of the array
-                highPriestsByProphet.push(1);
-            } else {
-                highPriestsByProphet.push(0);
-                s_prophetsRemaining--;
-                prophets[_prophet].isAlive = false;
-                prophets[_prophet].args = 99;
-            }
-            acolytes.push(0);
-        }
-        turnManager();
-        gameStatus = GameState.IN_PROGRESS;
-        emit gameStarted(s_gameNumber);
+    function updateProphetsRemaining(uint256 _add, uint256 _subtract) public onlyContract(s_gameplayEngine) {
+        s_prophetsRemaining += _add;
+        s_prophetsRemaining -= _subtract;
+    }
+
+    function updateProphetArgs(uint256 _prophetNum, uint256 _args) public onlyContract(s_gameplayEngine) {
+        prophets[_prophetNum].args = _args;
     }
 
     function ruleCheck() internal view {
@@ -471,16 +481,18 @@ contract Phenomenon {
         allegiance[s_gameNumber][player] = target;
     }
 
-    function increaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
+    function increaseAcolytes(uint256 target, uint256 amount) public {
+        if (msg.sender != s_ticketEngine || msg.sender != s_gameplayEngine) return;
         acolytes[target] += amount;
     }
 
-    function decreaseAccolites(uint256 target, uint256 amount) public onlyContract(s_ticketEngine) {
+    function decreaseAcolytes(uint256 target, uint256 amount) public {
+        if (msg.sender != s_ticketEngine || msg.sender != s_gameplayEngine) return;
         acolytes[target] -= amount;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////// TOKNE FUNCTIONS //////////////////////////////////////////////////////////////
+    ///////////// TOKEN FUNCTIONS //////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
@@ -519,18 +531,5 @@ contract Phenomenon {
 
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
         IERC20(_token).transfer(_destination, _amount);
-    }
-
-    function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
-        return (
-            prophets[_prophetNum].playerAddress,
-            prophets[_prophetNum].isAlive,
-            prophets[_prophetNum].isFree,
-            prophets[_prophetNum].args
-        );
-    }
-
-    function checkProphetList(address target) public view returns (bool) {
-        return prophetList[s_gameNumber][target];
     }
 }

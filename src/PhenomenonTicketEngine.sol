@@ -161,7 +161,7 @@ contract PhenomenonTicketEngine {
         uint256 totalPrice = getPrice(i_gameContract.acolytes(_prophetNum), _ticketsToBuy);
 
         i_gameContract.increaseTicketsToValhalla(msg.sender, _ticketsToBuy);
-        i_gameContract.increaseAccolites(_prophetNum, _ticketsToBuy);
+        i_gameContract.increaseAcolytes(_prophetNum, _ticketsToBuy);
         i_gameContract.increaseTotalTickets(_ticketsToBuy);
         i_gameContract.increaseTokenDepositedThisGame(totalPrice);
         i_gameContract.setPlayerAllegiance(msg.sender, _prophetNum);
@@ -197,7 +197,7 @@ contract PhenomenonTicketEngine {
         emit religionLost(currentAllegiance, _ticketsToSell, totalPrice, msg.sender);
         // Reduce the total number of tickets sold in the game by number of tickets sold by msg.sender
         i_gameContract.decreaseTotalTickets(_ticketsToSell);
-        i_gameContract.decreaseAccolites(currentAllegiance, _ticketsToSell);
+        i_gameContract.decreaseAcolytes(currentAllegiance, _ticketsToSell);
         // Remove tickets from msg.sender's balance
         i_gameContract.decreaseTicketsToValhalla(msg.sender, _ticketsToSell);
         // If msg.sender sold all tickets then set allegiance to 0
