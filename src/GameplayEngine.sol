@@ -268,6 +268,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                 (,,, uint256 target) = i_gameContract.getProphetData(_currentProphetTurn);
                 // if in jail, release from jail
                 i_gameContract.updateProphetFreedom(target, true);
+                // put accuser in jail
+                i_gameContract.updateProphetFreedom(_currentProphetTurn, false);
                 emit accusation(false, true, _currentProphetTurn, target);
             }
             // Logic for successful accusation
@@ -285,6 +287,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                     emit accusation(true, false, _currentProphetTurn, target);
                 }
             }
+
+            i_gameContract.turnManager();
         }
         // Only time more than one response is returned is at start game
         // This is the start game logic
@@ -301,7 +305,6 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             emit gameStarted(i_gameContract.s_gameNumber());
         }
         i_gameContract.changeGameStatus(1);
-        i_gameContract.turnManager();
     }
 
     // function reset() ???
