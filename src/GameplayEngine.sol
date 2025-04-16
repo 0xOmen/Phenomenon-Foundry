@@ -30,10 +30,11 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     error Game__ProphetNotFree();
     error UnexpectedRequestID(bytes32 requestId);
 
-    //////////////////////// State Variables ////////////////////////
+    //////////////////////// State Variables ////////////////////////////
     Phenomenon private immutable i_gameContract;
     string[] args;
 
+    //////////////////////// Chainlink Variables ////////////////////////
     bytes32 public s_lastFunctionRequestId;
     bytes public s_lastFunctionResponse;
     bytes public s_lastFunctionError;
@@ -47,6 +48,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     // Chainlink DON ID for Base Sepolia
     bytes32 donID = 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000;
 
+    //////////////////////// Events ////////////////////////////
     event prophetEnteredGame(uint256 indexed prophetNumber, address indexed sender, uint256 indexed gameNumber);
     event gameStarted(uint256 indexed gameNumber);
     event miracleAttempted(bool indexed isSuccess, uint256 indexed currentProphetTurn);
@@ -56,6 +58,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     );
     event Response(bytes32 indexed requestId, string character, bytes response, bytes err);
 
+    //////////////////////// Funtions ////////////////////////////
     constructor(address _gameContract, string memory _source, uint64 _subscriptionId)
         FunctionsClient(router)
         ConfirmedOwner(msg.sender)
@@ -65,6 +68,14 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         i_gameContract = Phenomenon(_gameContract);
     }
 
+    /**
+     * @notice This function allows an address to register as a prophet.
+     * @dev This function can only be called if the game is open for registration.
+     * @dev This function can only be called if the number of prophets is less than the maximum number of prophets.
+     * @dev This function can only be called if the sender is not already registered.
+     * @dev This function calls registerProphet() in Phenomenon.sol which transfers the entrance fee from the sender to the contract.
+     * @dev If the game fills, the function will start the game.
+     */
     function enterGame() public {
         // Check that game is Open for registration
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
@@ -92,6 +103,13 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         }
     }
 
+    /**
+     * @notice This function starts the game.
+     * @dev This function can only be called if the number of prophets is equal to the maximum number of prophets.
+     * @dev This function can only be called by enterGame() when the game fills.
+     * @param prophetsRegistered The number of prophets that have entered the game.
+     * @param numberOfProphets The maximum number of prophets that can enter the game.
+     */
     function startGame(uint256 prophetsRegistered, uint256 numberOfProphets) internal {
         /* Not needed if internal and only called from enterGame() as it is checked there
         if (gameStatus != 0) {
@@ -116,11 +134,21 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         sendRequest(3);
     }
 
+    /**
+     * @notice This function attempts to perform a miracle in the game.
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by the prophet who is currently in turn.
+     */
     function performMiracle() public {
         ruleCheck();
         sendRequest(0);
     }
 
+    /**
+     * @notice This function forces the current prophet to perform a miracle.
+     * @dev This function can only be called if the maximum time interval has passed from the last turn.
+     * @dev This function can only be called if the game is in progress.
+     */
     function forceMiracle() public {
         // Maximum time interval must have passed from last turn
         if (block.timestamp < i_gameContract.s_lastRoundTimestamp() + i_gameContract.s_maxInterval()) {
@@ -133,6 +161,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         sendRequest(0);
     }
 
+    /**
+     * @notice This function attempts to smite an opponent prophet.
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by the prophet who's turn it is.
+     * @param _target The number of the prophet to smite.
+     */
     function attemptSmite(uint256 _target) public {
         ruleCheck();
         (, bool targetIsAlive,,) = i_gameContract.getProphetData(_target);
@@ -144,6 +178,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         sendRequest(1);
     }
 
+    /**
+     * @notice This function attempts to accuse an opponent prophet of blasphemy.
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by the prophet who's turn it is.
+     * @param _target The number of the prophet to accuse.
+     */
     function accuseOfBlasphemy(uint256 _target) public {
         ruleCheck();
         (, bool targetIsAlive,,) = i_gameContract.getProphetData(_target);
@@ -161,6 +201,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         sendRequest(2);
     }
 
+    /**
+     * @notice This function checks the rules of the game.
+     * @dev This function reverts if the minimum time interval has not passed from the last turn.
+     * @dev This function reverts if the game is not in progress.
+     * @dev This function reverts if the sending address is not the prophet who's turn it is.
+     */
     function ruleCheck() internal view {
         // Minimum time interval must have passed from last turn
         if (block.timestamp < i_gameContract.s_lastRoundTimestamp() + i_gameContract.s_minInterval()) {
@@ -179,7 +225,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
     /**
      * @notice Used to set the arguments needed to send to Chainlink Function for offchain computation
-     * @dev
+     * @dev This function is called by sendRequest()
+     * @param _action The action to be performed by the Chainlink Function.
      */
     function setArgs(uint256 _action) internal {
         delete args;
@@ -199,6 +246,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     //////////////////       Functions to execute OffChain          ///////////////////
     ///////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * @notice This function sends a request to the Chainlink Functions DON.
+     * @dev This function is called by performMiracle(), forceMiracle(), attemptSmite(), and accuseOfBlasphemy().
+     * @param action The action to be performed by the Chainlink Function.
+     * @return requestId The request ID of the request.
+     */
     function sendRequest(uint256 action) internal returns (bytes32 requestId) {
         //Need to figure out how to send encrypted secret!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         i_gameContract.changeGameStatus(2);
@@ -219,6 +272,14 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         return s_lastFunctionRequestId;
     }
 
+    /**
+     * @notice This function fulfills a request from the Chainlink Functions DON.
+     * @dev This function is called by the Chainlink Functions DON.
+     * @dev This function executes the game consequences based on the response from the Chainlink Function.
+     * @param requestId The request ID of the request.
+     * @param response The response from the Chainlink Function.
+     * @param err The error from the Chainlink Function.
+     */
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
         if (s_lastFunctionRequestId != requestId) {
             revert UnexpectedRequestID(requestId);
@@ -301,7 +362,4 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         }
         i_gameContract.changeGameStatus(1);
     }
-
-    // function reset() ???
-    // function turnManager() ???
 }
