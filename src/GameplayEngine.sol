@@ -3,7 +3,6 @@
 pragma solidity ^0.8.19;
 
 import {Phenomenon} from "./Phenomenon.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {FunctionsClient} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
@@ -84,17 +83,13 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             revert GameEng__AlreadyRegistered();
         }
 
-        i_gameContract.registerProphet(msg.sender);
-        uint256 entranceFee = i_gameContract.s_entranceFee();
-        i_gameContract.increaseTokenDepositedThisGame(entranceFee);
-
         emit prophetEnteredGame(prophetsRegistered - 1, msg.sender, gameNumber);
+
+        i_gameContract.registerProphet(msg.sender);
 
         if ((prophetsRegistered + 1) == numberOfProphets) {
             startGame(prophetsRegistered, numberOfProphets);
         }
-
-        IERC20(i_gameContract.getGameToken()).transferFrom(msg.sender, address(i_gameContract), entranceFee);
     }
 
     function startGame(uint256 prophetsRegistered, uint256 numberOfProphets) internal {

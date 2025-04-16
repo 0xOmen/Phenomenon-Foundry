@@ -204,6 +204,7 @@ contract Phenomenon {
      * @dev This function can only be called by others if the game is not in progress.
      * @dev This function can only be called if the number of prophets is between 4 and 9.
      * @dev May need to disable changing the number of prophets in Production?
+     * @param _numberOfPlayers The number of prophets/players needed to start the game
      */
     function reset(uint16 _numberOfPlayers) public {
         if (msg.sender != owner) {
@@ -279,6 +280,13 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     //////////// PROPHET FUNCTIONS /////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @notice This functions registers an address to play as a prophet.
+     * @dev This function can only be called by the GameplayEngine contract.
+     * @dev This function should only be called if the gameState is OPEN.
+     * @dev This function can only be called if the number of prophets is between 4 and 9.
+     * @param _prophet The address of the prophet to register.
+     */
     function registerProphet(address _prophet) public onlyContract(s_gameplayEngine) {
         ProphetData memory newProphet;
         newProphet.playerAddress = _prophet;
@@ -297,6 +305,9 @@ contract Phenomenon {
         // This initializes acolytes[]
         // Push the number of acolytes/tickets sold into the prophet slot of the array
         acolytes.push(1);
+
+        s_tokensDepositedThisGame += s_entranceFee;
+        IERC20(GAME_TOKEN).transferFrom(_prophet, address(this), s_entranceFee);
     }
 
     function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
