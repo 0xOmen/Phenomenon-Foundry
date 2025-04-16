@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import {Phenomenon} from "./Phenomenon.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {FunctionsClient} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
@@ -22,6 +23,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     error GameEng__NotOpen();
     error GameEng__Full();
     error GameEng__AlreadyRegistered();
+    error GameEng__NotAllowListed();
     error GameEng__ProphetNumberError();
     error Game__MinimumTimeNotPassed();
     error Game__NotInProgress();
@@ -33,6 +35,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     //////////////////////// State Variables ////////////////////////////
     Phenomenon private immutable i_gameContract;
     string[] args;
+    bytes32 public s_allowListRoot;
+    bool public s_allowListEnabled;
 
     //////////////////////// Chainlink Variables ////////////////////////
     bytes32 public s_lastFunctionRequestId;
@@ -66,6 +70,15 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         source = _source;
         subscriptionId = _subscriptionId;
         i_gameContract = Phenomenon(_gameContract);
+        s_allowListEnabled = false;
+    }
+
+    function setAllowListEnabled(bool _allowListEnabled) public onlyOwner {
+        s_allowListEnabled = _allowListEnabled;
+    }
+
+    function resetAllowListRoot(bytes32 _allowListRoot) public onlyOwner {
+        s_allowListRoot = _allowListRoot;
     }
 
     /**
@@ -75,8 +88,14 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
      * @dev This function can only be called if the sender is not already registered.
      * @dev This function calls registerProphet() in Phenomenon.sol which transfers the entrance fee from the sender to the contract.
      * @dev If the game fills, the function will start the game.
+     * @param _allowListProof The proof of the sender's inclusion in the allow list.
      */
-    function enterGame() public {
+    function enterGame(bytes32[] memory _allowListProof) public {
+        if (s_allowListEnabled) {
+            if (!MerkleProof.verify(_allowListProof, s_allowListRoot, keccak256(abi.encodePacked(msg.sender)))) {
+                revert GameEng__NotAllowListed();
+            }
+        }
         // Check that game is Open for registration
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 0) {
