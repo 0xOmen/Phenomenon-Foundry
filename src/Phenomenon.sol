@@ -22,6 +22,7 @@ contract Phenomenon {
     error Game__NotEnoughTicketsOwned();
     error Game__OnlyOwner();
     error Game__OnlyController();
+    error Game__ProtocolFeeTooHigh();
     ///////////////////////////// Types ///////////////////////////////////
 
     enum GameState {
@@ -48,6 +49,7 @@ contract Phenomenon {
     uint256 public s_minInterval;
 
     uint256 public s_entranceFee;
+    uint256 public s_protocolFee;
 
     /// @notice The number of prophets/players needed to start the game
     uint16 public s_numberOfProphets;
@@ -128,6 +130,7 @@ contract Phenomenon {
         uint256 _maxInterval, //180 (3 minutes)
         uint256 _minInterval, //0 (instant)
         uint256 _entranceFee, //10000000000000000000000  (10,000)
+        uint256 _protocolFee, //500 = 5%
         uint16 _numProphets,
         address _gameToken //0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed $DEGEN
     ) {
@@ -135,6 +138,7 @@ contract Phenomenon {
         s_maxInterval = _maxInterval;
         s_minInterval = _minInterval;
         s_entranceFee = _entranceFee;
+        s_protocolFee = _protocolFee;
         s_numberOfProphets = _numProphets;
         s_gameNumber = 0;
         gameStatus = GameState.OPEN;
@@ -182,6 +186,10 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     //////////// GAME FUNCTIONS ////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @notice The randomness seed is used to determine which prophet is the Chosen One.
+     * @dev This number is sent to Chainlink to determine the Chosen One in a way that does not reveal the player.
+     */
     function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
         s_randomnessSeed = randomnessSeed;
     }
@@ -190,8 +198,13 @@ contract Phenomenon {
         return s_randomnessSeed;
     }
 
-    // Allow s_numberOfProphets to be changed in Hackathon but maybe don't let this happen in Production?
-    // There may be a griefing vector I haven't thought of
+    /**
+     * @notice This function resets the game.
+     * @dev This function can be called by the owner at any time.
+     * @dev This function can only be called by others if the game is not in progress.
+     * @dev This function can only be called if the number of prophets is between 4 and 9.
+     * @dev May need to disable changing the number of prophets in Production?
+     */
     function reset(uint16 _numberOfPlayers) public {
         if (msg.sender != owner) {
             if (gameStatus != GameState.ENDED) {
@@ -200,9 +213,9 @@ contract Phenomenon {
             if (block.timestamp < s_lastRoundTimestamp + 30) {
                 revert Game__NotAllowed();
             }
-            if (_numberOfPlayers < 4 || _numberOfPlayers > 9) {
-                revert Game__ProphetNumberError();
-            }
+        }
+        if (_numberOfPlayers < 4 || _numberOfPlayers > 9) {
+            revert Game__ProphetNumberError();
         }
 
         s_gameNumber++;
@@ -218,6 +231,13 @@ contract Phenomenon {
         emit gameReset(s_gameNumber);
     }
 
+    /**
+     * @notice Determine if game is over and advance to next turn.
+     * @dev This function can only be called by the GameplayEngine contract.
+     * @dev This function ends the game if there is only one prophet remaining.
+     * @dev This function calculates the net protocol fee and distributes it to the owner.
+     * @dev This function determines and sets how many tokens each winning ticket recieves.
+     */
     function turnManager() public onlyContract(s_gameplayEngine) {
         bool stillFinding = true;
         if (s_prophetsRemaining == 1) {
@@ -226,12 +246,12 @@ contract Phenomenon {
                 stillFinding = false;
             }
 
-            uint256 winningTokenCount =
+            uint256 winningPlayerCount =
                 acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]];
-            if (winningTokenCount != 0) {
-                s_ownerTokenBalance += (s_tokensDepositedThisGame * 5) / 100;
-                s_tokensDepositedThisGame = (s_tokensDepositedThisGame * 95) / 100;
-                tokensPerTicket[s_gameNumber] = s_tokensDepositedThisGame / winningTokenCount;
+            if (winningPlayerCount != 0) {
+                s_ownerTokenBalance += (s_tokensDepositedThisGame * s_protocolFee) / 10000;
+                s_tokensDepositedThisGame = (s_tokensDepositedThisGame * (10000 - s_protocolFee)) / 10000;
+                tokensPerTicket[s_gameNumber] = s_tokensDepositedThisGame / winningPlayerCount;
             } else {
                 tokensPerTicket[s_gameNumber] = 0;
                 s_ownerTokenBalance += s_tokensDepositedThisGame;
@@ -370,6 +390,10 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     ///////////// TOKEN FUNCTIONS //////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
+    function setProtocolFee(uint256 _protocolFee) public onlyOwner {
+        if (_protocolFee > 10000) revert Game__ProtocolFeeTooHigh();
+        s_protocolFee = _protocolFee;
+    }
 
     function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
         s_tokensDepositedThisGame += amount;

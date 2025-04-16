@@ -207,8 +207,9 @@ contract PhenomenonTicketEngine {
         // Subtract the price of tickets sold from s_tokensDepositedThisGame for this game
         i_gameContract.decreaseTokensDepositedThisGame(totalPrice);
         //Take 5% fee
-        i_gameContract.applyProtocolFee((totalPrice * 5) / 100);
-        totalPrice = (totalPrice * 95) / 100;
+        uint256 protocolFee = i_gameContract.s_protocolFee();
+        i_gameContract.applyProtocolFee((totalPrice * protocolFee) / 10000);
+        totalPrice = (totalPrice * (10000 - protocolFee) / 10000);
 
         i_gameContract.returnGameTokens(msg.sender, totalPrice);
     }
