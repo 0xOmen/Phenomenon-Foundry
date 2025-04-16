@@ -310,6 +310,12 @@ contract Phenomenon {
         IERC20(GAME_TOKEN).transferFrom(_prophet, address(this), s_entranceFee);
     }
 
+    /**
+     * @notice This function returns the data of a prophet.
+     * @dev This function is needed for the GameplayEngine contract.
+     * @param _prophetNum The number of the prophet to get data for.
+     * @return The address of the prophet, whether they are alive, whether they are free, and their args.
+     */
     function getProphetData(uint256 _prophetNum) public view returns (address, bool, bool, uint256) {
         return (
             prophets[_prophetNum].playerAddress,
@@ -355,6 +361,13 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     //////////// TICKET FUNCTIONS //////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @notice This function returns the percentage of tickets a prophet has.
+     * @dev This function is needed for the TicketEngine contract.
+     * @dev Due to precision loss with division this will return 0% if actual percentage is < 1%
+     * @param _playerNum The number of the prophet to get the ticket share for.
+     * @return The ticket share of the prophet as percentage (0%-100%).
+     */
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
         if (s_totalTickets == 0) return 0;
         else return ((acolytes[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
