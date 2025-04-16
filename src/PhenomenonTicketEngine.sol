@@ -38,7 +38,7 @@ contract PhenomenonTicketEngine {
     event gainReligion(
         uint256 indexed _target, uint256 indexed numTicketsBought, uint256 indexed totalPrice, address sender
     );
-    event ticketsClaimed(uint256 indexed ticketsClaimed, uint256 indexed tokensSent, uint256 indexed gameNumber);
+    event ticketsClaimed(address indexed player, uint256 indexed tokensSent, uint256 indexed gameNumber);
 
     constructor(
         address gameContractAddress,
@@ -62,6 +62,13 @@ contract PhenomenonTicketEngine {
         s_ticketMultiplier = _ticketMultiplier;
     }
 
+    /**
+     * @notice This function allows a prophet to change their allegiance.
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by a prophet.
+     * @param _senderProphetNum The number of the prophet to change allegiance to.
+     * @param _target The number of the prophet to change allegiance to.
+     */
     function highPriest(uint256 _senderProphetNum, uint256 _target) public {
         // Only prophets can call this function
         // Prophet must be alive or assigned to high priest
@@ -117,8 +124,10 @@ contract PhenomenonTicketEngine {
 
     /**
      * @notice Use this to buy Tickets of a prophet. You can only own tickets of one prophet.
-     * @notice In this version you cannot sell tickets, this could change in future versions.
-     * @dev
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by a non-prophet.
+     * @param _prophetNum The number of the prophet to buy tickets of.
+     * @param _ticketsToBuy The number of tickets to buy.
      */
     function getReligion(uint256 _prophetNum, uint256 _ticketsToBuy) public {
         // Make sure game state allows for tickets to be bought
@@ -170,6 +179,12 @@ contract PhenomenonTicketEngine {
         i_gameContract.depositGameTokens(msg.sender, totalPrice);
     }
 
+    /**
+     * @notice This function allows a player to sell their tickets.
+     * @dev This function can only be called if the game is in progress.
+     * @dev This function can only be called by a prophet.
+     * @param _ticketsToSell The number of tickets to sell.
+     */
     function loseReligion(uint256 _ticketsToSell) public {
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
@@ -214,29 +229,43 @@ contract PhenomenonTicketEngine {
         i_gameContract.returnGameTokens(msg.sender, totalPrice);
     }
 
-    function claimTickets(uint256 _gameNumber) public {
+    /**
+     * @notice This function allows a player to claim their tickets.
+     * @dev This function can only be called if the game being claimed from has ended.
+     * @dev This function can be called by any address to claim for any address.
+     * @param _gameNumber The number of the game to claim tickets from.
+     * @param _player The address to claim tickets for.
+     */
+    function claimTickets(uint256 _gameNumber, address _player) public {
         uint256 currentGameNumber = i_gameContract.s_gameNumber();
         if (_gameNumber >= currentGameNumber) {
             revert TicketEng__NotAllowed();
         }
         // TurnManager sets currentProphetTurn to game winner, so use this to check if allegiance is to the winner
-        if (i_gameContract.allegiance(_gameNumber, msg.sender) != i_gameContract.currentProphetTurn(_gameNumber)) {
+        if (i_gameContract.allegiance(_gameNumber, _player) != i_gameContract.currentProphetTurn(_gameNumber)) {
             revert TicketEng__AddressIsEliminated();
         }
-        uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, msg.sender);
+        uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, _player);
         if (startingUserTickets == 0) {
             revert TicketEng__NotEnoughTicketsOwned();
         }
 
         uint256 tokensToSend = startingUserTickets * i_gameContract.tokensPerTicket(_gameNumber);
         // Remove tickets from msg.sender's balance
-        i_gameContract.decreaseTicketsToValhalla(msg.sender, startingUserTickets);
+        i_gameContract.decreaseTicketsToValhalla(_player, startingUserTickets);
 
-        emit ticketsClaimed(startingUserTickets, tokensToSend, _gameNumber);
+        emit ticketsClaimed(_player, tokensToSend, _gameNumber);
 
-        i_gameContract.returnGameTokens(msg.sender, tokensToSend);
+        i_gameContract.returnGameTokens(_player, tokensToSend);
     }
 
+    /**
+     * @notice This function calculates the price of tickets based on the supply and amount of tickets.
+     * @dev This is the bonding curve that determines the ticket price for each prophet.
+     * @param supply The supply of tickets.
+     * @param amount The amount of tickets to calculate the price for.
+     * @return The total price for the tickets being exchanged.
+     */
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
         uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
         uint256 sum2 =
