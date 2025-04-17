@@ -113,7 +113,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             revert GameEng__AlreadyRegistered();
         }
 
-        emit prophetEnteredGame(prophetsRegistered - 1, msg.sender, gameNumber);
+        emit prophetEnteredGame(prophetsRegistered, msg.sender, gameNumber);
 
         i_gameContract.registerProphet(msg.sender);
 

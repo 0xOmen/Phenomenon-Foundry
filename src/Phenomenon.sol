@@ -366,7 +366,7 @@ contract Phenomenon {
      * @dev This function is needed for the TicketEngine contract.
      * @dev Due to precision loss with division this will return 0% if actual percentage is < 1%
      * @param _playerNum The number of the prophet to get the ticket share for.
-     * @return The ticket share of the prophet as percentage (0%-100%).
+     * @return The ticket share of the prophet as percentage.
      */
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
         if (s_totalTickets == 0) return 0;
@@ -459,5 +459,9 @@ contract Phenomenon {
 
     function getGameToken() public view returns (address) {
         return GAME_TOKEN;
+    }
+
+    function getOwner() public view returns (address) {
+        return owner;
     }
 }
