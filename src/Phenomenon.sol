@@ -304,7 +304,8 @@ contract Phenomenon {
         s_totalTickets++;
         // This initializes acolytes[]
         // Push the number of acolytes/tickets sold into the prophet slot of the array
-        acolytes.push(1);
+        acolytes.push(0);
+        highPriestsByProphet.push(1);
 
         s_tokensDepositedThisGame += s_entranceFee;
         IERC20(GAME_TOKEN).transferFrom(_prophet, address(this), s_entranceFee);

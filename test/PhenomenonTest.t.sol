@@ -252,6 +252,10 @@ contract PhenomenonTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function testUpdateProphetLife() public {
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        vm.stopPrank();
+
         vm.startPrank(address(gameplayEngine));
         phenomenon.registerProphet(user1);
 
@@ -279,6 +283,9 @@ contract PhenomenonTest is Test {
 
     function testUpdateProphetArgs() public {
         uint256 newArgs = 123;
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        vm.stopPrank();
 
         vm.startPrank(address(gameplayEngine));
         phenomenon.registerProphet(user1);
@@ -307,16 +314,13 @@ contract PhenomenonTest is Test {
     }
 
     function testTurnManagerWithOneProphetRemaining() public {
+        uint256 tokensPerTicket = (4 * phenomenon.s_entranceFee() * (10000 - phenomenon.s_protocolFee())) / 10000;
         // Set up game with 4 prophets
         vm.startPrank(owner);
         phenomenon.reset(4);
         vm.stopPrank();
 
         // Register 4 prophets
-        vm.startPrank(address(gameplayEngine));
-
-        // First approve from each user
-        vm.stopPrank();
         vm.startPrank(user1);
         ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
         vm.stopPrank();
@@ -355,9 +359,11 @@ contract PhenomenonTest is Test {
         // Set current turn to prophet 2 (index 2)
         phenomenon.setProphetTurn(2);
 
+        vm.expectEmit(true, false, false, false);
+        emit currentTurn(3);
         // Execute turn manager which should end the game and set turn to prophet 3
         vm.expectEmit(true, true, true, false);
-        emit gameEnded(phenomenon.s_gameNumber(), 0, 3); // game number, tokens per ticket (0), current prophet turn (3)
+        emit gameEnded(phenomenon.s_gameNumber(), tokensPerTicket, 3); // game number, tokens per ticket (4 * entrance fee), current prophet turn (3)
 
         phenomenon.turnManager();
         vm.stopPrank();
@@ -413,19 +419,19 @@ contract PhenomenonTest is Test {
         // Now we have 3 prophets remaining
         assertEq(phenomenon.s_prophetsRemaining(), 3);
 
-        // Set current turn to prophet 2 (index 1)
-        phenomenon.setProphetTurn(1);
+        // Set current turn to prophet 4 (index 3)
+        phenomenon.setProphetTurn(3);
 
-        // Execute turn manager which should advance turn to prophet 3 (index 2)
+        // Execute turn manager which should advance turn to prophet 2 (index 1)
         // (skipping prophet 1 who is dead)
         vm.expectEmit(true, false, false, false);
-        emit currentTurn(2);
+        emit currentTurn(1);
 
         phenomenon.turnManager();
         vm.stopPrank();
 
         // Verify turn was advanced
-        assertEq(phenomenon.getCurrentProphetTurn(), 2);
+        assertEq(phenomenon.getCurrentProphetTurn(), 1);
 
         // Verify game still in progress
         assertEq(uint256(phenomenon.gameStatus()), uint256(Phenomenon.GameState.IN_PROGRESS));
