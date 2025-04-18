@@ -219,16 +219,20 @@ contract PhenomenonTest is Test {
         vm.startPrank(user1);
         ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
         vm.stopPrank();
+        vm.startPrank(user2);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        vm.stopPrank();
 
         // Register prophet
         vm.startPrank(address(gameplayEngine));
         phenomenon.registerProphet(user1);
+        phenomenon.registerProphet(user2);
         vm.stopPrank();
 
         // Verify registration
         bool isRegistered = phenomenon.prophetList(phenomenon.s_gameNumber(), user1);
         assertEq(isRegistered, true);
-        assertEq(phenomenon.s_prophetsRemaining(), 1);
+        assertEq(phenomenon.s_prophetsRemaining(), 2);
 
         // Verify prophet data
         (address prophetAddress, bool isAlive, bool isFree,) = phenomenon.getProphetData(0);
@@ -236,8 +240,19 @@ contract PhenomenonTest is Test {
         assertEq(isAlive, true);
         assertEq(isFree, true);
 
+        // Verify ticket and allegiance data
+        assertEq(phenomenon.acolytes(0), 0);
+        assertEq(phenomenon.acolytes(1), 0);
+        assertEq(phenomenon.highPriestsByProphet(0), 1);
+        assertEq(phenomenon.highPriestsByProphet(1), 1);
+        assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user1), 0);
+        assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user2), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user1), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user2), 1);
+        assertEq(phenomenon.s_totalTickets(), 2);
+
         // Verify token transfer
-        assertEq(phenomenon.s_tokensDepositedThisGame(), phenomenon.s_entranceFee());
+        assertEq(phenomenon.s_tokensDepositedThisGame(), (2 * phenomenon.s_entranceFee()));
     }
 
     function testOnlyGameplayEngineCanRegisterProphet() public {
