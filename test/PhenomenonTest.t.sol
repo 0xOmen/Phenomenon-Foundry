@@ -611,7 +611,7 @@ contract PhenomenonTest is Test {
         phenomenon.reset(4);
         vm.stopPrank();
 
-        // Register 4 prophets
+        // Register a prophet
         vm.startPrank(user1);
         ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
         vm.stopPrank();

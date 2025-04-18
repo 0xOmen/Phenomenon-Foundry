@@ -403,12 +403,12 @@ contract Phenomenon {
     }
 
     function increaseAcolytes(uint256 target, uint256 amount) public {
-        if (msg.sender != s_ticketEngine || msg.sender != s_gameplayEngine) revert Game__OnlyController();
+        if (msg.sender != s_ticketEngine && msg.sender != s_gameplayEngine) revert Game__OnlyController();
         acolytes[target] += amount;
     }
 
     function decreaseAcolytes(uint256 target, uint256 amount) public {
-        if (msg.sender != s_ticketEngine || msg.sender != s_gameplayEngine) revert Game__OnlyController();
+        if (msg.sender != s_ticketEngine && msg.sender != s_gameplayEngine) revert Game__OnlyController();
         acolytes[target] -= amount;
     }
 
