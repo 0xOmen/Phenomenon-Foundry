@@ -663,13 +663,14 @@ contract PhenomenonTest is Test {
         phenomenon.increaseAcolytes(0, 5);
 
         // Verify
-        assertEq(phenomenon.acolytes(0), 6); // 1 initial + 5 more
+        assertEq(phenomenon.acolytes(0), 5); // 1 initial + 5 more
+        assertEq(phenomenon.highPriestsByProphet(0), 1);
 
         // Decrease acolytes
         phenomenon.decreaseAcolytes(0, 2);
 
         // Verify
-        assertEq(phenomenon.acolytes(0), 4); // 6 - 2
+        assertEq(phenomenon.acolytes(0), 3); // 5 - 2
         vm.stopPrank();
     }
 
@@ -693,25 +694,35 @@ contract PhenomenonTest is Test {
     }
 
     function testIncreaseDecreaseHighPriest() public {
+        // Set up game
+        vm.startPrank(owner);
+        phenomenon.reset(4);
+        vm.stopPrank();
+
+        // Register prophet
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        vm.stopPrank();
+
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.registerProphet(user1);
+
         vm.startPrank(address(phenomenonTicketEngine));
 
+        // Verify (initial value is 1)
+        assertEq(phenomenon.highPriestsByProphet(0), 1);
+
         // Increase high priests
-        phenomenon.increaseHighPriest(1); // Prophet 1 gets a high priest
-
-        // Verify (initial value is 0)
-        assertEq(phenomenon.highPriestsByProphet(1), 1);
-
-        // Increase again
-        phenomenon.increaseHighPriest(1);
+        phenomenon.increaseHighPriest(0); // Prophet 1 (index 0) gets a high priest
 
         // Verify
-        assertEq(phenomenon.highPriestsByProphet(1), 2);
+        assertEq(phenomenon.highPriestsByProphet(0), 2);
 
         // Decrease high priests
-        phenomenon.decreaseHighPriest(1);
+        phenomenon.decreaseHighPriest(0);
 
         // Verify
-        assertEq(phenomenon.highPriestsByProphet(1), 1);
+        assertEq(phenomenon.highPriestsByProphet(0), 1);
         vm.stopPrank();
     }
 }
