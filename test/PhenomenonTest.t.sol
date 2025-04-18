@@ -269,6 +269,10 @@ contract PhenomenonTest is Test {
     }
 
     function testUpdateProphetFreedom() public {
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        vm.stopPrank();
+
         vm.startPrank(address(gameplayEngine));
         phenomenon.registerProphet(user1);
 
