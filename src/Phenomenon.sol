@@ -450,6 +450,7 @@ contract Phenomenon {
         if (_amount > s_ownerTokenBalance) {
             revert Game__NotEnoughTicketsOwned();
         }
+        s_ownerTokenBalance -= _amount;
         IERC20(GAME_TOKEN).transfer(_destination, _amount);
     }
     // This can be abused and should either be removed or revokable
