@@ -10,6 +10,7 @@ contract HelperConfig is Script {
     struct NetworkConfig {
         address chainlinkFunctionsRouter;
         bytes32 chainlinkFunctionsDONID;
+        uint64 subscriptionId;
         address wETH;
         uint256 deployerKey;
     }
@@ -29,6 +30,7 @@ contract HelperConfig is Script {
             chainlinkFunctionsRouter: 0xf9B8fc078197181C841c296C876945aaa425B278,
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
             wETH: 0x4200000000000000000000000000000000000006,
+            subscriptionId: 1234,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
@@ -46,6 +48,7 @@ contract HelperConfig is Script {
         NetworkConfig memory anvilNetworkConfig = NetworkConfig({
             chainlinkFunctionsRouter: address(0),
             chainlinkFunctionsDONID: bytes32(0),
+            subscriptionId: 1234,
             wETH: address(wETHMock),
             deployerKey: DEFAULT_ANVIL_KEY
         });

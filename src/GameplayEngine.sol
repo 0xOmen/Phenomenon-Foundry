@@ -46,11 +46,11 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     uint8 donHostedSecretsSlotID;
     uint64 donHostedSecretsVersion;
     uint64 subscriptionId;
-    address router = 0xf9B8fc078197181C841c296C876945aaa425B278; //Base Sepolia Chainlink Router
+    address router; //Check using correct chain for router address
     string source;
     uint32 gasLimit = 750000;
     // Chainlink DON ID for Base Sepolia
-    bytes32 donID = 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000;
+    bytes32 donID;
 
     //////////////////////// Events ////////////////////////////
     event prophetEnteredGame(uint256 indexed prophetNumber, address indexed sender, uint256 indexed gameNumber);
@@ -63,14 +63,20 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     event Response(bytes32 indexed requestId, string character, bytes response, bytes err);
 
     //////////////////////// Funtions ////////////////////////////
-    constructor(address _gameContract, string memory _source, uint64 _subscriptionId)
-        FunctionsClient(router)
+    constructor(address _gameContract, string memory _source, uint64 _subscriptionId, address _router, bytes32 _donId)
+        FunctionsClient(_router)
         ConfirmedOwner(msg.sender)
     {
         source = _source;
         subscriptionId = _subscriptionId;
+        router = _router;
+        donID = _donId;
         i_gameContract = Phenomenon(_gameContract);
         s_allowListEnabled = false;
+    }
+
+    function changeFunctionsSubscriptionId(uint64 _subscriptionId) public onlyOwner {
+        subscriptionId = _subscriptionId;
     }
 
     function setAllowListEnabled(bool _allowListEnabled) public onlyOwner {

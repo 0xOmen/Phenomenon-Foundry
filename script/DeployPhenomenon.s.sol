@@ -14,12 +14,22 @@ contract DeployPhenomenon is Script {
     {
         HelperConfig helperConfig = new HelperConfig();
 
-        (address chainlinkFunctionsRouter, bytes32 chainlinkFunctionsDONID, address wETH, uint256 deployerKey) =
-            helperConfig.activeNetworkConfig();
+        (
+            address chainlinkFunctionsRouter,
+            bytes32 chainlinkFunctionsDONID,
+            uint64 subscriptionId,
+            address wETH,
+            uint256 deployerKey
+        ) = helperConfig.activeNetworkConfig();
         vm.startBroadcast(deployerKey);
         Phenomenon phenomenon = new Phenomenon(180, 0, 1000, 500, 4, wETH);
-        GameplayEngine gameplayEngine =
-            new GameplayEngine(address(phenomenon), "https://api.phenomenon.com/v1/gameplay", 1);
+        GameplayEngine gameplayEngine = new GameplayEngine(
+            address(phenomenon),
+            "https://api.phenomenon.com/v1/gameplay",
+            subscriptionId,
+            chainlinkFunctionsRouter,
+            chainlinkFunctionsDONID
+        );
         PhenomenonTicketEngine phenomenonTicketEngine = new PhenomenonTicketEngine(address(phenomenon), 1000);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         phenomenon.changeTicketEngine(address(phenomenonTicketEngine));
