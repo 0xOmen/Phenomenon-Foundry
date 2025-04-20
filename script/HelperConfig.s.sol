@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockFunctionsRouterSimple} from "../test/mocks/MockFunctionsRouterSimple.sol";
 
 contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
@@ -41,12 +42,12 @@ contract HelperConfig is Script {
         }
         vm.startBroadcast();
         ERC20Mock wETHMock = new ERC20Mock();
-        //new NetworkConfig({chainlinkFunctionsRouter: 0x7479706573636861696e2e6e6574776f726b2e626173652e676f7665726e6f722e6f7267,
-        //});
+        // deploy MockFunctionsRouterSimple
+        MockFunctionsRouterSimple mockFunctionsRouterSimple = new MockFunctionsRouterSimple();
         vm.stopBroadcast();
 
         NetworkConfig memory anvilNetworkConfig = NetworkConfig({
-            chainlinkFunctionsRouter: address(0),
+            chainlinkFunctionsRouter: address(mockFunctionsRouterSimple),
             chainlinkFunctionsDONID: bytes32(0),
             subscriptionId: 1234,
             wETH: address(wETHMock),

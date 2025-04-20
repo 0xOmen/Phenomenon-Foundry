@@ -387,4 +387,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         }
         i_gameContract.changeGameStatus(1);
     }
+
+    function getOwner() public view returns (address) {
+        return owner();
+    }
 }
