@@ -1,0 +1,4 @@
+{
+  "solidity.defaultCompiler": "localFile",
+  "solidity.compileUsingLocalVersion": "/home/smithrobertd/phenomenon3/soljson-v0.8.29+commit.ab55807c.js"
+}

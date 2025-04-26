@@ -124,7 +124,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         i_gameContract.registerProphet(msg.sender);
 
         if ((prophetsRegistered + 1) == numberOfProphets) {
-            startGame(prophetsRegistered, numberOfProphets);
+            startGame(numberOfProphets);
         }
     }
 
@@ -132,18 +132,18 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
      * @notice This function starts the game.
      * @dev This function can only be called if the number of prophets is equal to the maximum number of prophets.
      * @dev This function can only be called by enterGame() when the game fills.
-     * @param prophetsRegistered The number of prophets that have entered the game.
      * @param numberOfProphets The maximum number of prophets that can enter the game.
      */
-    function startGame(uint256 prophetsRegistered, uint256 numberOfProphets) internal {
+    function startGame(uint256 numberOfProphets) internal {
         /* Not needed if internal and only called from enterGame() as it is checked there
         if (gameStatus != 0) {
             revert Game__NotOpen();
         }
-        */
+        
         if (prophetsRegistered != numberOfProphets) {
             revert GameEng__ProphetNumberError();
         }
+        */
 
         // 1. Change gameStatus to IN_PROGRESS
         i_gameContract.changeGameStatus(1);
