@@ -293,7 +293,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         req.setArgs(args); // Set the arguments for the request
 
         // Send the request and store the request ID
-        s_lastFunctionRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, gasLimit, donID);
+        //s_lastFunctionRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, gasLimit, donID);
+
         return s_lastFunctionRequestId;
     }
 

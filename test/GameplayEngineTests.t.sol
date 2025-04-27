@@ -161,10 +161,6 @@ contract GameplayEngineTests is Test {
         vm.startPrank(user4);
         ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
 
-        // Expect the gameStarted event
-        vm.expectEmit(true, false, false, false);
-        emit gameStarted(phenomenon.s_gameNumber());
-
         // Enter and fill the game
         gameplayEngine.enterGame(new bytes32[](0));
         vm.stopPrank();

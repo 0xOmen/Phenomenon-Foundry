@@ -25,7 +25,7 @@ contract DeployPhenomenon is Script {
         Phenomenon phenomenon = new Phenomenon(180, 0, 1000, 500, 4, wETH);
         GameplayEngine gameplayEngine = new GameplayEngine(
             address(phenomenon),
-            "https://api.phenomenon.com/v1/gameplay",
+            "return Functions.encodeString('Hello World!');",
             subscriptionId,
             chainlinkFunctionsRouter,
             chainlinkFunctionsDONID
