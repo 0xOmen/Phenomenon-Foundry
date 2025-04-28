@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
+
 contract MockFunctionsRouterSimple {
     bytes32[] private s_requestIds;
 
@@ -31,9 +34,13 @@ contract MockFunctionsRouterSimple {
         bytes memory text = bytes(_outcome);
         if (text.length == 1) {
             response = abi.encode(_outcome);
+            //console.log("single outcome");
         } else {
             for (uint256 i = 0; i < text.length; i++) {
-                response = abi.encode(text[i]);
+                response = bytes.concat(response, text[i]);
+                //response = abi.encode(text[i]);
+                //console2.logBytes1(text[i]);
+                //console.log("multiple outcome");
             }
         }
 

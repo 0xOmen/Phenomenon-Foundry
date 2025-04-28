@@ -9,9 +9,12 @@ import {DeployPhenomenon} from "../script/DeployPhenomenon.s.sol";
 import {HelperConfig} from "../script/HelperConfig.s.sol";
 import {MockFunctionsRouterSimple} from "./mocks/MockFunctionsRouterSimple.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {GameplayEngineHelper} from "./mocks/GameplayEngineHelper.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract GameplayEngineTests is Test {
     GameplayEngine public gameplayEngine;
+    GameplayEngineHelper public gameplayEngineHelper;
     Phenomenon public phenomenon;
     PhenomenonTicketEngine public phenomenonTicketEngine;
     HelperConfig public helperConfig;
@@ -53,7 +56,13 @@ contract GameplayEngineTests is Test {
         // set owner to the owner of the phenomenon contract
         owner = gameplayEngine.getOwner();
         mockFunctionsRouterSimple = MockFunctionsRouterSimple(chainlinkFunctionsRouter);
-
+        gameplayEngineHelper = new GameplayEngineHelper(
+            address(phenomenon),
+            "return Functions.encodeString('Hello World!');",
+            uint64(123),
+            chainlinkFunctionsRouter,
+            chainlinkFunctionsDONID
+        );
         // Mint tokens for testing
         ERC20Mock(weth).mint(user1, 1000 ether);
         ERC20Mock(weth).mint(user2, 1000 ether);
@@ -218,19 +227,69 @@ contract GameplayEngineTests is Test {
         gameplayEngine.enterGame(new bytes32[](0));
         vm.stopPrank();
 
-        // Simulate the game start response from Chainlink
-        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        // Generate a mock requestId for testing
+        bytes32 mockRequestId = keccak256(abi.encode(block.timestamp, address(gameplayEngine), "testRequest"));
 
-        // Manually set game status to IN_PROGRESS to simulate response from Chainlink
+        // Set this mock requestId using a low-level storage write
+        vm.store(
+            address(gameplayEngine),
+            bytes32(uint256(5)), // slot for s_lastFunctionRequestId
+            mockRequestId
+        );
+        vm.store(
+            address(gameplayEngineHelper),
+            bytes32(uint256(5)), // slot for s_lastFunctionRequestId
+            mockRequestId
+        );
+    }
 
-        //  ******** Do we really need to set this? it should get done automatically*********
-        vm.startPrank(owner);
-        phenomenon.ownerChangeGameState(Phenomenon.GameState.IN_PROGRESS);
+    function testFunctionsRouterAppropriatelySetsUpGame() public {
+        setupGameWithFourProphets();
+        // Transfer control of Phenomenon contract to GameplayEngineHelper
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
         vm.stopPrank();
+
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("1011");
+        console2.logBytes(response);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+
+        // Check that the game is in IN_PROGRESS state
+        assertEq(uint256(phenomenon.gameStatus()), 1);
+        assertEq(phenomenon.s_prophetsRemaining(), 3);
+
+        // Check that the prophets are set up correctly
+        (address prophet1, bool isAlive1, bool isFree1, uint256 args1) = phenomenon.getProphetData(0);
+        assertEq(prophet1, user1);
+        assertTrue(isAlive1);
+        assertTrue(isFree1);
+        assertEq(args1, 0);
+
+        (address prophet2, bool isAlive2, bool isFree2, uint256 args2) = phenomenon.getProphetData(1);
+        assertEq(prophet2, user2);
+        assertFalse(isAlive2);
+        assertTrue(isFree2);
+        assertEq(args2, 99);
+
+        (address prophet3, bool isAlive3, bool isFree3, uint256 args3) = phenomenon.getProphetData(2);
+        assertEq(prophet3, user3);
+        assertTrue(isAlive3);
+        assertTrue(isFree3);
+        assertEq(args3, 0);
     }
 
     function testPerformMiracleSuccess() public {
         setupGameWithFourProphets();
+
+        vm.startBroadcast(deployerKey);
+        mockFunctionsRouterSimple._fulfillRequest("1011");
+        vm.stopBroadcast();
 
         // Set prophet 0 (user1) as the current turn
         vm.startPrank(address(gameplayEngine));

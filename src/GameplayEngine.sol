@@ -253,7 +253,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
      * @dev This function is called by sendRequest()
      * @param _action The action to be performed by the Chainlink Function.
      */
-    function setArgs(uint256 _action) internal {
+    function setArguments(uint256 _action) internal {
         delete args;
         uint256 currentProphetTurn = i_gameContract.getCurrentProphetTurn();
         args.push(Strings.toString(i_gameContract.getRandomnessSeed())); //roleVRFSeed
@@ -280,7 +280,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     function sendRequest(uint256 action) internal returns (bytes32 requestId) {
         //Need to figure out how to send encrypted secret!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         i_gameContract.changeGameStatus(2);
-        setArgs(action);
+        setArguments(action);
 
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source); // Initialize the request with JS code
@@ -378,7 +378,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             for (uint256 _prophet = 0; _prophet < response.length; _prophet++) {
                 if (response[_prophet] == "0") {
                     // Change prophet into High Priest
-                    i_gameContract.decreaseAcolytes(_prophet, 1);
+                    i_gameContract.decreaseHighPriest(_prophet);
                     i_gameContract.updateProphetsRemaining(0, 1);
                     i_gameContract.updateProphetLife(_prophet, false);
                     i_gameContract.updateProphetArgs(_prophet, 99);

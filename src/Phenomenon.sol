@@ -378,7 +378,9 @@ contract Phenomenon {
         highPriestsByProphet[target]++;
     }
 
-    function decreaseHighPriest(uint256 target) public onlyContract(s_ticketEngine) {
+    function decreaseHighPriest(uint256 target) public {
+        if (msg.sender != s_ticketEngine && msg.sender != s_gameplayEngine) revert Game__OnlyController();
+
         highPriestsByProphet[target]--;
     }
 
