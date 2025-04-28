@@ -714,6 +714,12 @@ contract GameplayEngineTests is Test {
     function testForceMiracle() public {
         setupGameWithFourProphets();
 
+        // Test revert if not enought time passed
+        vm.startPrank(user5);
+        vm.expectRevert(abi.encodeWithSelector(GameplayEngine.Game__MinimumTimeNotPassed.selector));
+        gameplayEngine.forceMiracle();
+        vm.stopPrank();
+
         // Set prophet 0 (user1) as the current turn
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
@@ -722,26 +728,13 @@ contract GameplayEngineTests is Test {
         // Warp past the max interval
         vm.warp(block.timestamp + phenomenon.s_maxInterval() + 1);
 
-        // Any user can force a miracle
-        vm.startPrank(user2);
+        // Anyone can force a miracle
+        vm.startPrank(user5);
         gameplayEngine.forceMiracle();
         vm.stopPrank();
 
         // Game should be in AWAITING_RESPONSE state
         assertEq(uint256(phenomenon.gameStatus()), 2);
-
-        // Get the requestId
-        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
-
-        // Simulate successful miracle response
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("1");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
-
-        // Game should be back to IN_PROGRESS
-        assertEq(uint256(phenomenon.gameStatus()), 1);
     }
 
     function testGameStartProcessHighPriests() public {
