@@ -382,25 +382,39 @@ contract GameplayEngineTests is Test {
         gameplayEngine.performMiracle();
         vm.stopPrank();
 
-        // Get the requestId
-        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        // Game should be in AWAITING_RESPONSE state
+        assertEq(uint256(phenomenon.gameStatus()), 2);
 
-        // Simulate failed miracle response ("0")
-        vm.expectEmit(true, false, false, false);
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("0");
+        console2.logBytes(response);
+
+        // Simulate successful miracle response ("1")
+        vm.expectEmit(true, true, false, false);
         emit miracleAttempted(false, 0);
 
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("0");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+
+        // Game should be back to IN_PROGRESS
+        assertEq(uint256(phenomenon.gameStatus()), 1);
+        // check that the prophet turn is 2
+        assertEq(phenomenon.currentProphetTurn(phenomenon.s_gameNumber()), 2);
 
         // Prophet should be dead
         (, bool isAlive,,) = phenomenon.getProphetData(0);
         assertFalse(isAlive);
 
         // Prophets remaining should be reduced by 1
-        assertEq(phenomenon.s_prophetsRemaining(), 3);
+        assertEq(phenomenon.s_prophetsRemaining(), 2);
     }
 
     function testAttemptSmiteSuccess() public {
