@@ -32,8 +32,9 @@ contract MockFunctionsRouterSimple {
         // check the length of _outcome
         bytes memory response;
         bytes memory text = bytes(_outcome);
+        //console2.logBytes(text);
         if (text.length == 1) {
-            response = abi.encode(_outcome);
+            response = text;
             //console.log("single outcome");
         } else {
             for (uint256 i = 0; i < text.length; i++) {

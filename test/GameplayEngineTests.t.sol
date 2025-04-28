@@ -241,10 +241,7 @@ contract GameplayEngineTests is Test {
             bytes32(uint256(5)), // slot for s_lastFunctionRequestId
             mockRequestId
         );
-    }
 
-    function testFunctionsRouterAppropriatelySetsUpGame() public {
-        setupGameWithFourProphets();
         // Transfer control of Phenomenon contract to GameplayEngineHelper
         vm.prank(owner);
         phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
@@ -259,6 +256,10 @@ contract GameplayEngineTests is Test {
         vm.prank(owner);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         vm.stopPrank();
+    }
+
+    function testFunctionsRouterAppropriatelySetsUpGame() public {
+        setupGameWithFourProphets();
 
         // Check that the game is in IN_PROGRESS state
         assertEq(uint256(phenomenon.gameStatus()), 1);
@@ -325,10 +326,6 @@ contract GameplayEngineTests is Test {
     function testPerformMiracleSuccess() public {
         setupGameWithFourProphets();
 
-        vm.startBroadcast(deployerKey);
-        mockFunctionsRouterSimple._fulfillRequest("1011");
-        vm.stopBroadcast();
-
         // Set prophet 0 (user1) as the current turn
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
@@ -342,18 +339,24 @@ contract GameplayEngineTests is Test {
         // Game should be in AWAITING_RESPONSE state
         assertEq(uint256(phenomenon.gameStatus()), 2);
 
-        // Get the requestId
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
         bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("1");
+        console2.logBytes(response);
 
         // Simulate successful miracle response ("1")
-        vm.expectEmit(true, false, false, false);
+        vm.expectEmit(true, true, false, false);
         emit miracleAttempted(true, 0);
 
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("1");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
 
         // Prophet should still be alive and free
         (, bool isAlive, bool isFree,) = phenomenon.getProphetData(0);
@@ -362,6 +365,8 @@ contract GameplayEngineTests is Test {
 
         // Game should be back to IN_PROGRESS
         assertEq(uint256(phenomenon.gameStatus()), 1);
+        // check that the prophet turn is 2
+        assertEq(phenomenon.currentProphetTurn(phenomenon.s_gameNumber()), 2);
     }
 
     function testPerformMiracleFail() public {
