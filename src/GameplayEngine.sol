@@ -378,7 +378,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             for (uint256 _prophet = 0; _prophet < response.length; _prophet++) {
                 if (response[_prophet] == "0") {
                     // Change prophet into High Priest
-                    i_gameContract.decreaseHighPriest(_prophet);
+                    //i_gameContract.decreaseHighPriest(_prophet);
                     i_gameContract.updateProphetsRemaining(0, 1);
                     i_gameContract.updateProphetLife(_prophet, false);
                     i_gameContract.updateProphetArgs(_prophet, 99);

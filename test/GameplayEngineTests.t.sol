@@ -282,6 +282,44 @@ contract GameplayEngineTests is Test {
         assertTrue(isAlive3);
         assertTrue(isFree3);
         assertEq(args3, 0);
+
+        (address prophet4, bool isAlive4, bool isFree4, uint256 args4) = phenomenon.getProphetData(3);
+        assertEq(prophet4, user4);
+        assertTrue(isAlive4);
+        assertTrue(isFree4);
+        assertEq(args4, 0);
+
+        // Check ticket system is correct
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user1), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user2), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user3), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user4), 1);
+        assertEq(phenomenon.s_totalTickets(), 4);
+
+        // Check ticketShare is 1/n players
+        assertEq(phenomenon.getTicketShare(0), 25);
+        assertEq(phenomenon.getTicketShare(1), 25);
+        assertEq(phenomenon.getTicketShare(2), 25);
+        assertEq(phenomenon.getTicketShare(3), 25);
+
+        // Check allegiance is correct
+        uint256 currentGameNumber = phenomenon.s_gameNumber();
+        assertEq(phenomenon.allegiance(currentGameNumber, user1), 0);
+        assertEq(phenomenon.allegiance(currentGameNumber, user2), 1);
+        assertEq(phenomenon.allegiance(currentGameNumber, user3), 2);
+        assertEq(phenomenon.allegiance(currentGameNumber, user4), 3);
+
+        // Check acolytes is correct
+        assertEq(phenomenon.acolytes(0), 0);
+        assertEq(phenomenon.acolytes(1), 0);
+        assertEq(phenomenon.acolytes(2), 0);
+        assertEq(phenomenon.acolytes(3), 0);
+
+        // Check high priests is correct
+        assertEq(phenomenon.highPriestsByProphet(0), 1);
+        assertEq(phenomenon.highPriestsByProphet(1), 1);
+        assertEq(phenomenon.highPriestsByProphet(2), 1);
+        assertEq(phenomenon.highPriestsByProphet(3), 1);
     }
 
     function testPerformMiracleSuccess() public {

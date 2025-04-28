@@ -70,10 +70,6 @@ contract PhenomenonTicketEngine {
      * @param _target The number of the prophet to change allegiance to.
      */
     function highPriest(uint256 _senderProphetNum, uint256 _target) public {
-        // Only prophets can call this function
-        // Prophet must be alive or assigned to high priest
-        // Can't try to follow non-existent prophet
-        // Can't call if <= 2 prophets remain
         address senderProphetAddress;
         bool senderProphetAlive;
         uint256 senderProphetArgs;
@@ -108,18 +104,13 @@ contract PhenomenonTicketEngine {
             revert TicketEng__NotInProgress();
         }
         // High Priests are not given a TicketToValhalla at game start
-        uint256 ticketstoValhalla = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
-        if (ticketstoValhalla > 0) {
-            emit religionLost(_target, 1, 0, msg.sender);
-            i_gameContract.decreaseHighPriest(senderAllegiance);
-            i_gameContract.decreaseTicketsToValhalla(msg.sender, 1);
-            i_gameContract.decreaseTotalTickets(1);
-        }
+
+        emit religionLost(_target, 1, 0, msg.sender);
+        i_gameContract.decreaseHighPriest(senderAllegiance);
+
         emit gainReligion(_target, 1, 0, msg.sender);
         i_gameContract.increaseHighPriest(_target);
-        i_gameContract.increaseTicketsToValhalla(msg.sender, 1);
         i_gameContract.setPlayerAllegiance(msg.sender, _target);
-        i_gameContract.increaseTotalTickets(1);
     }
 
     /**
