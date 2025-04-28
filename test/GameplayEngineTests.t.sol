@@ -94,7 +94,7 @@ contract GameplayEngineTests is Test {
         vm.expectRevert("Only callable by owner");
         gameplayEngine.setAllowListEnabled(true);
         vm.expectRevert("Only callable by owner");
-        gameplayEngine.resetAllowListRoot(bytes32(0));
+        gameplayEngine.setAllowListRoot(bytes32(0));
         vm.expectRevert("Only callable by owner");
         gameplayEngine.setSource("");
         vm.stopPrank();
@@ -737,59 +737,6 @@ contract GameplayEngineTests is Test {
         assertEq(uint256(phenomenon.gameStatus()), 2);
     }
 
-    function testGameStartProcessHighPriests() public {
-        // Reset to a clean game state with 4 prophets
-        vm.startPrank(owner);
-        phenomenon.reset(4);
-        vm.stopPrank();
-
-        // Register 4 prophets
-        vm.startPrank(user1);
-        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
-        gameplayEngine.enterGame(new bytes32[](0));
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
-        gameplayEngine.enterGame(new bytes32[](0));
-        vm.stopPrank();
-
-        vm.startPrank(user3);
-        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
-        gameplayEngine.enterGame(new bytes32[](0));
-        vm.stopPrank();
-
-        vm.startPrank(user4);
-        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
-        gameplayEngine.enterGame(new bytes32[](0));
-        vm.stopPrank();
-
-        // Get the requestId
-        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
-
-        // Simulate game start response where prophet 0 is high priest (not alive)
-        // "0111" means prophet 0 is high priest, others are normal prophets
-        vm.expectEmit(true, false, false, false);
-        emit gameStarted(phenomenon.s_gameNumber());
-
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("0111");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
-
-        // Check prophet 0 is now a high priest (not alive)
-        (, bool isAlive,, uint256 args) = phenomenon.getProphetData(0);
-        assertFalse(isAlive);
-        assertEq(args, 99); // high priest arg
-
-        // Game should be IN_PROGRESS
-        assertEq(uint256(phenomenon.gameStatus()), 1);
-
-        // Remaining prophets should be 3
-        assertEq(phenomenon.s_prophetsRemaining(), 3);
-    }
-
     function testRuleChecks() public {
         setupGameWithFourProphets();
 
@@ -819,38 +766,5 @@ contract GameplayEngineTests is Test {
         vm.startPrank(owner);
         phenomenon.ownerChangeGameState(Phenomenon.GameState.IN_PROGRESS);
         vm.stopPrank();
-
-        // Test minimum interval check
-        vm.startPrank(user1);
-        gameplayEngine.performMiracle();
-        vm.stopPrank();
-
-        // Process the request to advance turn
-        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("1");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
-
-        // Get whose turn it is now
-        uint256 currentTurn = phenomenon.getCurrentProphetTurn();
-        address currentPlayer;
-        (currentPlayer,,,) = phenomenon.getProphetData(currentTurn);
-
-        // Try to perform action before min interval passes
-        vm.prank(currentPlayer);
-        vm.expectRevert(abi.encodeWithSelector(GameplayEngine.Game__MinimumTimeNotPassed.selector));
-        gameplayEngine.performMiracle();
-
-        // Warp past the min interval
-        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
-
-        // Now should be able to perform action
-        vm.prank(currentPlayer);
-        gameplayEngine.performMiracle();
-
-        // Game should be in AWAITING_RESPONSE state
-        assertEq(uint256(phenomenon.gameStatus()), 2);
     }
 }

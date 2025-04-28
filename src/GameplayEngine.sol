@@ -83,7 +83,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         s_allowListEnabled = _allowListEnabled;
     }
 
-    function resetAllowListRoot(bytes32 _allowListRoot) public onlyOwner {
+    function setAllowListRoot(bytes32 _allowListRoot) public onlyOwner {
         s_allowListRoot = _allowListRoot;
     }
 
