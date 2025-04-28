@@ -385,6 +385,7 @@ contract GameplayEngineTests is Test {
         // Game should be in AWAITING_RESPONSE state
         assertEq(uint256(phenomenon.gameStatus()), 2);
 
+        // Start fullfillRequest Sequence
         vm.prank(owner);
         phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
         vm.stopPrank();
@@ -393,7 +394,7 @@ contract GameplayEngineTests is Test {
         bytes memory response = mockFunctionsRouterSimple._fulfillRequest("0");
         console2.logBytes(response);
 
-        // Simulate successful miracle response ("1")
+        // Simulate unsuccessful miracle response ("0")
         vm.expectEmit(true, true, false, false);
         emit miracleAttempted(false, 0);
 
@@ -403,6 +404,7 @@ contract GameplayEngineTests is Test {
         vm.prank(owner);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
 
         // Game should be back to IN_PROGRESS
         assertEq(uint256(phenomenon.gameStatus()), 1);
@@ -425,30 +427,41 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
-        // User1 attempts to smite user2 (prophet 1)
+        // User1 attempts to smite user2 (prophet 2)
         vm.startPrank(user1);
-        gameplayEngine.attemptSmite(1);
+        gameplayEngine.attemptSmite(2);
         vm.stopPrank();
 
-        // Get the requestId
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
         bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("3");
+        console2.logBytes(response);
 
         // Simulate successful smite response ("3")
-        vm.expectEmit(true, false, false, false);
-        emit smiteAttempted(1, true, 0);
+        vm.expectEmit(true, true, true, false);
+        emit smiteAttempted(2, true, 0);
 
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("3");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
 
         // Target prophet should be dead
-        (, bool isTargetAlive,,) = phenomenon.getProphetData(1);
+        (, bool isTargetAlive,,) = phenomenon.getProphetData(2);
         assertFalse(isTargetAlive);
 
         // Prophets remaining should be reduced by 1
-        assertEq(phenomenon.s_prophetsRemaining(), 3);
+        assertEq(phenomenon.s_prophetsRemaining(), 2);
+
+        // check that the prophet turn is 3
+        assertEq(phenomenon.currentProphetTurn(phenomenon.s_gameNumber()), 3);
     }
 
     function testAttemptSmiteFail() public {
@@ -459,31 +472,44 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
-        // User1 attempts to smite user2 (prophet 1)
+        // User1 attempts to smite user2 (prophet 2)
         vm.startPrank(user1);
-        gameplayEngine.attemptSmite(1);
+        gameplayEngine.attemptSmite(2);
         vm.stopPrank();
 
-        // Get the requestId
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
         bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("2");
+        console2.logBytes(response);
 
         // Simulate failed smite response ("2")
-        vm.expectEmit(true, false, false, false);
-        emit smiteAttempted(1, false, 0);
+        vm.expectEmit(true, true, true, false);
+        emit smiteAttempted(2, false, 0);
 
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("2");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
 
         // Attacker should be jailed
         (,, bool isAttackerFree,) = phenomenon.getProphetData(0);
         assertFalse(isAttackerFree);
 
         // Target prophet should still be alive
-        (, bool isTargetAlive,,) = phenomenon.getProphetData(1);
+        (, bool isTargetAlive,,) = phenomenon.getProphetData(2);
         assertTrue(isTargetAlive);
+        // Prophets remaining should be unchanged
+        assertEq(phenomenon.s_prophetsRemaining(), 3);
+
+        // check that the prophet turn is 2
+        assertEq(phenomenon.currentProphetTurn(phenomenon.s_gameNumber()), 2);
     }
 
     function testAccuseOfBlasphemySuccess() public {
