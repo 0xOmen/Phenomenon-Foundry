@@ -520,31 +520,146 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
-        // User1 accuses user2 (prophet 1) of blasphemy
+        // User1 accuses user4 (prophet 3) of blasphemy
         vm.startPrank(user1);
-        gameplayEngine.accuseOfBlasphemy(1);
+        gameplayEngine.accuseOfBlasphemy(3);
         vm.stopPrank();
 
-        // Get the requestId
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
         bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("5");
+        console2.logBytes(response);
 
         // Simulate successful accusation response ("5")
         vm.expectEmit(true, false, false, false);
-        emit accusation(true, true, 0, 1);
+        emit accusation(true, true, 0, 3);
 
-        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("5");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
 
         // Target prophet should be jailed
-        (,, bool isTargetFree,) = phenomenon.getProphetData(1);
+        (, bool isTargetAlive, bool isTargetFree,) = phenomenon.getProphetData(3);
         assertFalse(isTargetFree);
 
         // But still alive
-        (, bool isTargetAlive,,) = phenomenon.getProphetData(1);
         assertTrue(isTargetAlive);
+
+        // Check successful accusation of jailed prophet
+        // User3 accuses user4 (prophet 3) of blasphemy
+        vm.startPrank(user3);
+        gameplayEngine.accuseOfBlasphemy(3);
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        requestId = gameplayEngine.s_lastFunctionRequestId();
+        response = mockFunctionsRouterSimple._fulfillRequest("5");
+        console2.logBytes(response);
+
+        // Simulate successful accusation response ("5")
+        vm.expectEmit(true, false, false, false);
+        emit accusation(true, false, 2, 3);
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // Target prophet should be jailed
+        (, isTargetAlive, isTargetFree,) = phenomenon.getProphetData(3);
+        assertFalse(isTargetFree);
+
+        // And dead
+        assertFalse(isTargetAlive);
+
+        // Number of players remaining should be 2
+        assertEq(phenomenon.s_prophetsRemaining(), 2);
+    }
+
+    function testOutOfJailOnMiracle() public {
+        setupGameWithFourProphets();
+
+        // Set prophet 0 (user1) as the current turn
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.setProphetTurn(0);
+        vm.stopPrank();
+
+        // User1 accuses user3 (prophet 2) of blasphemy
+        vm.startPrank(user1);
+        gameplayEngine.accuseOfBlasphemy(2);
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("5");
+        console2.logBytes(response);
+
+        // Simulate successful accusation response ("5")
+        vm.expectEmit(true, false, false, false);
+        emit accusation(true, true, 0, 2);
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // User3 performs miracle to get out of jail
+        vm.startPrank(user3);
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        requestId = gameplayEngine.s_lastFunctionRequestId();
+        response = mockFunctionsRouterSimple._fulfillRequest("1");
+        console2.logBytes(response);
+
+        // Simulate successful miracle response ("1")
+        vm.expectEmit(true, true, false, false);
+        emit miracleAttempted(true, 2);
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // Jailed prophet should now be free
+        (, bool isTargetAlive, bool isTargetFree,) = phenomenon.getProphetData(2);
+        assertTrue(isTargetFree);
+
+        // And free
+        assertTrue(isTargetAlive);
+
+        // Number of players remaining should be 3
+        assertEq(phenomenon.s_prophetsRemaining(), 3);
     }
 
     function testAccuseOfBlasphemyFail() public {
@@ -555,27 +670,41 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
-        // User1 accuses user2 (prophet 1) of blasphemy
+        // User1 accuses user4 (prophet 3) of blasphemy
         vm.startPrank(user1);
-        gameplayEngine.accuseOfBlasphemy(1);
+        gameplayEngine.accuseOfBlasphemy(3);
         vm.stopPrank();
 
-        // Get the requestId
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
         bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
-
-        // Simulate failed accusation response ("4")
-        vm.expectEmit(true, false, false, false);
-        emit accusation(false, true, 0, 1);
-
         bytes memory response = mockFunctionsRouterSimple._fulfillRequest("4");
-        (bool success,) = address(gameplayEngine).call(
-            abi.encodeWithSignature("fulfillRequest(bytes32,bytes,bytes)", requestId, response, "")
-        );
-        assertTrue(success);
+        console2.logBytes(response);
 
-        // Target prophet should still be free
-        (,, bool isTargetFree,) = phenomenon.getProphetData(1);
+        // Simulate unsuccessful accusation response ("4")
+        vm.expectEmit(true, false, false, false);
+        emit accusation(false, true, 0, 3);
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // Target prophet should be free
+        (, bool isTargetAlive, bool isTargetFree,) = phenomenon.getProphetData(3);
         assertTrue(isTargetFree);
+
+        // And still alive
+        assertTrue(isTargetAlive);
+
+        // Number of players remaining should be 3
+        assertEq(phenomenon.s_prophetsRemaining(), 3);
 
         // Accuser should be jailed
         (,, bool isAccuserFree,) = phenomenon.getProphetData(0);
