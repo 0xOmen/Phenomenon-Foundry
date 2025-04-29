@@ -162,7 +162,7 @@ contract PhenomenonTicketEngineTests is Test {
         vm.stopPrank();
     }
 
-    function testHighPriestCanChangeAllegiance() public {
+    function testProphetCanChangeAllegiance() public {
         setupGameWithFourProphets();
 
         // Prophet 0 (user1) should be able to change allegiance to prophet 2
@@ -172,6 +172,14 @@ contract PhenomenonTicketEngineTests is Test {
 
         // Check that allegiance was changed
         assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user1), 2);
+        // Check that tickets were properly assigned
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user1), 1);
+        assertEq(phenomenon.getTicketShare(0), 0);
+        assertEq(phenomenon.getTicketShare(2), 50);
+        assertEq(phenomenon.highPriestsByProphet(0), 0);
+        assertEq(phenomenon.highPriestsByProphet(2), 2);
+        assertEq(phenomenon.acolytes(0), 0);
+        assertEq(phenomenon.acolytes(2), 0);
     }
 
     function testCannotHighPriestToDeadProphet() public {
