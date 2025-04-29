@@ -259,19 +259,27 @@ contract PhenomenonTicketEngineTests is Test {
 
     function testCanBuyTickets() public {
         setupGameWithFourProphets();
+        uint256 tokensDeposited = phenomenon.s_tokensDepositedThisGame();
 
         // User5 (non-prophet) buys tickets for prophet 0
         vm.startPrank(user5);
         ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
         uint256 price = phenomenonTicketEngine.getPrice(0, 5);
-        console2.log("price", price);
         phenomenonTicketEngine.getReligion(0, 5);
+        tokensDeposited += price;
         vm.stopPrank();
 
         // Check that tickets were properly assigned
         assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user5), 5);
+        assertEq(phenomenon.acolytes(0), 5);
+        assertEq(phenomenon.s_totalTickets(), 9);
+        assertEq(phenomenon.s_tokensDepositedThisGame(), tokensDeposited);
         assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user5), 0);
         assertEq(phenomenon.getTicketShare(0), 66);
+
+        // Check tokens were transfered from User5 to Phenomenon
+        assertEq(ERC20Mock(weth).balanceOf(user5), 100000 ether - price);
+        assertEq(ERC20Mock(weth).balanceOf(address(phenomenon)), tokensDeposited);
     }
 
     function testCannotBuyTicketsOfDeadProphet() public {
