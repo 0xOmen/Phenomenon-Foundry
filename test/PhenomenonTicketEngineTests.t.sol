@@ -381,17 +381,39 @@ contract PhenomenonTicketEngineTests is Test {
     function testCanSellTickets() public {
         setupGameWithFourProphets();
 
-        // First buy some tickets
+        // First buy 2 tickets
         vm.startPrank(user5);
-        ERC20Mock(weth).approve(address(phenomenon), 100 ether);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        uint256 price1 = phenomenonTicketEngine.getPrice(0, 2);
+        uint256 user5StartingBalance = ERC20Mock(weth).balanceOf(user5);
         phenomenonTicketEngine.getReligion(0, 2);
 
+        // Then Sell 1 ticket
+        uint256 ticketsToSell = 1;
+        uint256 tokensDeposited = phenomenon.s_tokensDepositedThisGame();
+        console2.log("tokensDeposited", tokensDeposited);
+        // i_gameContract.acolytes(currentAllegiance) - _ticketsToSell, _ticketsToSell
+        uint256 price2 = phenomenonTicketEngine.getPrice(phenomenon.acolytes(0) - ticketsToSell, ticketsToSell);
+        console2.log("price2", price2);
         // Then sell one ticket
-        phenomenonTicketEngine.loseReligion(1);
+        phenomenonTicketEngine.loseReligion(ticketsToSell);
         vm.stopPrank();
 
         // Check that tickets were properly updated
         assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user5), 1);
+        // Check total tickets equals 5
+        assertEq(phenomenon.s_totalTickets(), 5);
+        // Check Accolytes of prophet 0 equals 1
+        assertEq(phenomenon.acolytes(0), 1);
+        //Check user5 allegiance is set to prophet 0
+        assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user5), 0);
+        // Check tokens deposited this game is appropriately decreased
+        assertEq(phenomenon.s_tokensDepositedThisGame(), tokensDeposited - price2);
+        // Check user5 token balance is correct and protocol fee was applied
+        assertEq(
+            ERC20Mock(weth).balanceOf(user5),
+            user5StartingBalance - price1 + (price2 * (10000 - phenomenon.s_protocolFee()) / 10000)
+        );
     }
 
     function testCannotSellMoreTicketsThanOwned() public {
@@ -399,13 +421,21 @@ contract PhenomenonTicketEngineTests is Test {
 
         // Buy 1 ticket
         vm.startPrank(user5);
-        ERC20Mock(weth).approve(address(phenomenon), 100 ether);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
         phenomenonTicketEngine.getReligion(0, 1);
 
         // Try to sell 2 tickets
         vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotEnoughTicketsOwned.selector));
         phenomenonTicketEngine.loseReligion(2);
         vm.stopPrank();
+    }
+
+    function testCanBuyOtherProphetTicketsAfterSellingAll() public {
+        setupGameWithFourProphets();
+
+        // Buy 1 ticket
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
     }
 
     /*//////////////////////////////////////////////////////////////
