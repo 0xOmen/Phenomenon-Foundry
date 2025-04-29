@@ -182,18 +182,74 @@ contract PhenomenonTicketEngineTests is Test {
         assertEq(phenomenon.acolytes(2), 0);
     }
 
-    function testCannotHighPriestToDeadProphet() public {
+    function testHighPriestCanChangeAllegiance() public {
         setupGameWithFourProphets();
 
-        // Kill prophet 2
-        vm.startPrank(address(gameplayEngine));
-        phenomenon.updateProphetLife(2, false);
+        // Prophet 1 (user2) should be able to change allegiance to prophet 2
+        vm.startPrank(user2);
+        phenomenonTicketEngine.highPriest(1, 2);
         vm.stopPrank();
 
-        // Prophet 0 (user1) should not be able to change allegiance to dead prophet 2
+        // Check that allegiance was changed
+        assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user2), 2);
+        // Check that tickets were properly assigned
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user2), 1);
+        assertEq(phenomenon.getTicketShare(1), 0);
+        assertEq(phenomenon.getTicketShare(2), 50);
+        assertEq(phenomenon.highPriestsByProphet(1), 0);
+        assertEq(phenomenon.highPriestsByProphet(2), 2);
+        assertEq(phenomenon.acolytes(1), 0);
+        assertEq(phenomenon.acolytes(2), 0);
+    }
+
+    function testHighPriestCannotChangeAllegianceIfFollwingDeadProphet() public {
+        setupGameWithFourProphets();
+
+        // Set Prophet 0 allegiance to Prophet 3
+        vm.startPrank(user1);
+        phenomenonTicketEngine.highPriest(0, 3);
+        vm.stopPrank();
+
+        // Kill prophet 3
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(3, false);
+        vm.stopPrank();
+
+        // Prophet 0 (user1) should not be able to change allegiance
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__AddressIsEliminated.selector));
+        phenomenonTicketEngine.highPriest(0, 0);
+        vm.stopPrank();
+    }
+
+    function testHighPriestCannotChangeAllegianceIfTooFewProphetsRemaining() public {
+        setupGameWithFourProphets();
+
+        // Kill prophet 3
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(3, false);
+        phenomenon.updateProphetsRemaining(0, 1);
+        vm.stopPrank();
+
+        // Prophet 0 (user1) should not be able to change allegiance
         vm.startPrank(user1);
         vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
-        phenomenonTicketEngine.highPriest(0, 2);
+        phenomenonTicketEngine.highPriest(0, 0);
+        vm.stopPrank();
+    }
+
+    function testProphetCannotChangeAllegianceIfKilled() public {
+        setupGameWithFourProphets();
+
+        // Kill prophet 3
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(3, false);
+        vm.stopPrank();
+
+        // Prophet 3 (user4) should not be able to change allegiance
+        vm.startPrank(user4);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
+        phenomenonTicketEngine.highPriest(3, 0);
         vm.stopPrank();
     }
 
@@ -316,7 +372,7 @@ contract PhenomenonTicketEngineTests is Test {
                        PRICE CALCULATION TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testGetPrice() public {
+    function testGetPrice() public view {
         // Test price calculation with different supplies and amounts
         uint256 price1 = phenomenonTicketEngine.getPrice(0, 1);
         uint256 price2 = phenomenonTicketEngine.getPrice(1, 1);

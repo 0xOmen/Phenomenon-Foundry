@@ -103,7 +103,6 @@ contract PhenomenonTicketEngine {
         if (gameStatus != 1) {
             revert TicketEng__NotInProgress();
         }
-        // High Priests are not given a TicketToValhalla at game start
 
         emit religionLost(_target, 1, 0, msg.sender);
         i_gameContract.decreaseHighPriest(senderAllegiance);
