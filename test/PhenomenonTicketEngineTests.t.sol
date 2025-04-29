@@ -265,6 +265,8 @@ contract PhenomenonTicketEngineTests is Test {
         vm.startPrank(user5);
         ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
         uint256 price = phenomenonTicketEngine.getPrice(0, 5);
+        vm.expectEmit(true, true, true, false);
+        emit gainReligion(0, 5, price, user5);
         phenomenonTicketEngine.getReligion(0, 5);
         tokensDeposited += price;
         vm.stopPrank();
@@ -391,11 +393,11 @@ contract PhenomenonTicketEngineTests is Test {
         // Then Sell 1 ticket
         uint256 ticketsToSell = 1;
         uint256 tokensDeposited = phenomenon.s_tokensDepositedThisGame();
-        console2.log("tokensDeposited", tokensDeposited);
         // i_gameContract.acolytes(currentAllegiance) - _ticketsToSell, _ticketsToSell
         uint256 price2 = phenomenonTicketEngine.getPrice(phenomenon.acolytes(0) - ticketsToSell, ticketsToSell);
-        console2.log("price2", price2);
         // Then sell one ticket
+        vm.expectEmit(true, true, true, false);
+        emit religionLost(0, ticketsToSell, price2, user5);
         phenomenonTicketEngine.loseReligion(ticketsToSell);
         vm.stopPrank();
 
@@ -433,9 +435,32 @@ contract PhenomenonTicketEngineTests is Test {
     function testCanBuyOtherProphetTicketsAfterSellingAll() public {
         setupGameWithFourProphets();
 
-        // Buy 1 ticket
+        // First buy 2 tickets
         vm.startPrank(user5);
         ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(0, 2);
+
+        // Then Sell both tickets
+        uint256 ticketsToSell = 2;
+        phenomenonTicketEngine.loseReligion(ticketsToSell);
+
+        // Finally, buy 1 ticket of prophet 2
+        phenomenonTicketEngine.getReligion(2, 1);
+        vm.stopPrank();
+
+        // Check that tickets were properly updated
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user5), 1);
+        // Check total tickets equals 5
+        assertEq(phenomenon.s_totalTickets(), 5);
+        // Check Acolytes of prophet 0 equals 0
+        assertEq(phenomenon.acolytes(0), 0);
+        // Check Acolytes of prophet 2 equals 1
+        assertEq(phenomenon.acolytes(2), 1);
+        //Check user5 allegiance is set to prophet 2
+        assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user5), 2);
+        //Check ticketShare of prophets 0 and 2 (1 of 5 and 2 of 5, respectively)
+        assertEq(phenomenon.getTicketShare(0), 20);
+        assertEq(phenomenon.getTicketShare(2), 40);
     }
 
     /*//////////////////////////////////////////////////////////////
