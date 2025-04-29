@@ -74,15 +74,16 @@ contract PhenomenonTicketEngine {
         bool senderProphetAlive;
         uint256 senderProphetArgs;
         (senderProphetAddress, senderProphetAlive,, senderProphetArgs) = getProphetData(_senderProphetNum);
-
+        (, bool targetIsAlive,,) = getProphetData(_target);
         uint256 gameNumber = i_gameContract.s_gameNumber();
         if (
             // Only a prophet can call this function
             // Prophet must be alive or a High Priest (priests are "killed" at game start)
-            // Target must exist
+            // Target must exist and be alive
             // Must have more than 2 prophets alive
             senderProphetAddress != msg.sender || (!senderProphetAlive && senderProphetArgs != 99)
-                || _target >= i_gameContract.s_numberOfProphets() || i_gameContract.s_prophetsRemaining() <= 2
+                || _target >= i_gameContract.s_numberOfProphets() || !targetIsAlive
+                || i_gameContract.s_prophetsRemaining() <= 2
         ) {
             revert TicketEng__NotAllowed();
         }
@@ -91,10 +92,8 @@ contract PhenomenonTicketEngine {
         (, currentLeaderAlive,,) = getProphetData(senderAllegiance);
         // Can't change allegiance if following an eliminated prophet
         if (currentLeaderAlive == false) {
-            // Allegiance automatically set to 0? Maybe set to self?
-            uint256 prophetZeroArgs;
-            (,,, prophetZeroArgs) = getProphetData(0);
-            if (senderAllegiance != 0 || (senderAllegiance == 0 && prophetZeroArgs != 99)) {
+            // Allegiance automatically set to self?
+            if ((senderProphetArgs != 99 && senderAllegiance != _senderProphetNum)) {
                 revert TicketEng__AddressIsEliminated();
             }
         }

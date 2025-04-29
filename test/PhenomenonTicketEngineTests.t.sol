@@ -553,6 +553,7 @@ contract PhenomenonTicketEngineTests is Test {
                        PRICE CALCULATION TESTS
     //////////////////////////////////////////////////////////////*/
 
+    // Protocol should always return the same amount of tokens going from supply x+n to supply x as it cost to go from supply x to supply
     function testGetPrice() public view {
         // Test price calculation with different supplies and amounts
         uint256 price1 = phenomenonTicketEngine.getPrice(0, 1);
