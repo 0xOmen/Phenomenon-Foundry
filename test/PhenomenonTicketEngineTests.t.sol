@@ -506,17 +506,46 @@ contract PhenomenonTicketEngineTests is Test {
         vm.stopPrank();
     }
 
-    function testCannotClaimTicketsFromCurrentGame() public {
+    function testCannotClaimTicketsIfNotWinner() public {
         setupGameWithFourProphets();
 
-        // Buy tickets for prophet 0
+        // Buy tickets for prophet 2
         vm.startPrank(user5);
-        ERC20Mock(weth).approve(address(phenomenon), 100 ether);
-        phenomenonTicketEngine.getReligion(0, 1);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(2, 1);
+        vm.stopPrank();
 
-        // Try to claim tickets from current game
-        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
-        phenomenonTicketEngine.claimTickets(phenomenon.s_gameNumber(), user5);
+        // End the game with prophet 0 as winner
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(2, false);
+        phenomenon.updateProphetLife(3, false);
+        phenomenon.updateProphetsRemaining(0, 2);
+        phenomenon.turnManager();
+        vm.stopPrank();
+
+        // Start new game
+        vm.startPrank(owner);
+        phenomenon.reset(4);
+        vm.stopPrank();
+
+        // Attempt to Claim non-winning tickets
+        uint256 gameNumber = phenomenon.s_gameNumber() - 1;
+        vm.startPrank(user5);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__AddressIsEliminated.selector));
+        phenomenonTicketEngine.claimTickets(gameNumber, user5);
+        vm.stopPrank();
+
+        // Attempt to Claim non-winning HighPriest Tickets
+        vm.startPrank(user2);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__AddressIsEliminated.selector));
+        phenomenonTicketEngine.claimTickets(gameNumber, user2);
+        vm.stopPrank();
+
+        // Attempt to double claim tickets
+        vm.startPrank(user1);
+        phenomenonTicketEngine.claimTickets(gameNumber, user1);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotEnoughTicketsOwned.selector));
+        phenomenonTicketEngine.claimTickets(gameNumber, user1);
         vm.stopPrank();
     }
 
