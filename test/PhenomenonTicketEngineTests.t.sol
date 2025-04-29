@@ -68,7 +68,7 @@ contract PhenomenonTicketEngineTests is Test {
         ERC20Mock(weth).mint(user2, 1000 ether);
         ERC20Mock(weth).mint(user3, 1000 ether);
         ERC20Mock(weth).mint(user4, 1000 ether);
-        ERC20Mock(weth).mint(user5, 1000 ether);
+        ERC20Mock(weth).mint(user5, 100000 ether);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -262,13 +262,16 @@ contract PhenomenonTicketEngineTests is Test {
 
         // User5 (non-prophet) buys tickets for prophet 0
         vm.startPrank(user5);
-        ERC20Mock(weth).approve(address(phenomenon), 100 ether);
-        phenomenonTicketEngine.getReligion(0, 1);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        uint256 price = phenomenonTicketEngine.getPrice(0, 5);
+        console2.log("price", price);
+        phenomenonTicketEngine.getReligion(0, 5);
         vm.stopPrank();
 
         // Check that tickets were properly assigned
-        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user5), 1);
+        assertEq(phenomenon.ticketsToValhalla(phenomenon.s_gameNumber(), user5), 5);
         assertEq(phenomenon.allegiance(phenomenon.s_gameNumber(), user5), 0);
+        assertEq(phenomenon.getTicketShare(0), 66);
     }
 
     function testCannotBuyTicketsOfDeadProphet() public {
@@ -284,6 +287,82 @@ contract PhenomenonTicketEngineTests is Test {
         ERC20Mock(weth).approve(address(phenomenon), 100 ether);
         vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__ProphetIsDead.selector));
         phenomenonTicketEngine.getReligion(0, 1);
+
+        // User5 tries to buy tickets of High Priest
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__ProphetIsDead.selector));
+        phenomenonTicketEngine.getReligion(1, 1);
+        vm.stopPrank();
+    }
+
+    function testCannotBuyTicketsIfNotInProgress() public {
+        setupGameWithFourProphets();
+
+        // Change game state to Open
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.changeGameStatus(0);
+        vm.stopPrank();
+
+        // User5 tries to buy tickets of dead prophet
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 1000 ether);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotInProgress.selector));
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+
+        // Change game state to awaiting response
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.changeGameStatus(2);
+        vm.stopPrank();
+
+        // User5 tries to buy tickets of dead prophet
+        vm.startPrank(user5);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotInProgress.selector));
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+
+        // Change game state to Ended
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.changeGameStatus(4);
+        vm.stopPrank();
+
+        // User5 tries to buy tickets of dead prophet
+        vm.startPrank(user5);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotInProgress.selector));
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+    }
+
+    function testCannotBuyZeroTickets() public {
+        setupGameWithFourProphets();
+
+        // User5 tries to buy 0 tickets
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 1000 ether);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
+        phenomenonTicketEngine.getReligion(0, 0);
+        vm.stopPrank();
+    }
+
+    function testCannotBuyTicketsIfProphet() public {
+        setupGameWithFourProphets();
+
+        // User1 tries to buy 1 tickets
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), 1000 ether);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+    }
+
+    function testCannotBuyTicketsOfSecondProphet() public {
+        setupGameWithFourProphets();
+
+        // User5 tries to buy 1 ticket of prophet 0 then 1 of prophet 2
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 1000 ether);
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotAllowed.selector));
+        phenomenonTicketEngine.getReligion(2, 1);
         vm.stopPrank();
     }
 
