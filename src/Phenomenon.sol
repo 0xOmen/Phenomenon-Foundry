@@ -3,7 +3,6 @@
 pragma solidity ^0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 /**
  * @title Phenomenon
  * @author 0x-Omen.eth
@@ -246,17 +245,6 @@ contract Phenomenon {
             if (prophets[currentProphetTurn[s_gameNumber]].isAlive) {
                 stillFinding = false;
             }
-
-            uint256 winningPlayerCount =
-                acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]];
-            if (winningPlayerCount != 0) {
-                s_ownerTokenBalance += (s_tokensDepositedThisGame * s_protocolFee) / 10000;
-                s_tokensDepositedThisGame = (s_tokensDepositedThisGame * (10000 - s_protocolFee)) / 10000;
-                tokensPerTicket[s_gameNumber] = s_tokensDepositedThisGame / winningPlayerCount;
-            } else {
-                tokensPerTicket[s_gameNumber] = 0;
-                s_ownerTokenBalance += s_tokensDepositedThisGame;
-            }
         }
 
         uint256 nextProphetTurn = currentProphetTurn[s_gameNumber] + 1;
@@ -273,6 +261,17 @@ contract Phenomenon {
         }
         emit currentTurn(currentProphetTurn[s_gameNumber]);
         if (s_prophetsRemaining == 1) {
+            uint256 winningPlayerCount =
+                acolytes[currentProphetTurn[s_gameNumber]] + highPriestsByProphet[currentProphetTurn[s_gameNumber]];
+            if (winningPlayerCount != 0) {
+                uint256 fee = (s_tokensDepositedThisGame * s_protocolFee) / 10000;
+                s_ownerTokenBalance += fee;
+                s_tokensDepositedThisGame -= fee;
+                tokensPerTicket[s_gameNumber] = s_tokensDepositedThisGame / winningPlayerCount;
+            } else {
+                tokensPerTicket[s_gameNumber] = 0;
+                s_ownerTokenBalance += s_tokensDepositedThisGame;
+            }
             emit gameEnded(s_gameNumber, tokensPerTicket[s_gameNumber], currentProphetTurn[s_gameNumber]);
         }
     }
@@ -390,6 +389,13 @@ contract Phenomenon {
 
     function decreaseTicketsToValhalla(address target, uint256 amount) public onlyContract(s_ticketEngine) {
         ticketsToValhalla[s_gameNumber][target] -= amount;
+    }
+
+    function burnWinningTicketsByGame(uint256 _gameNumber, address target, uint256 amount)
+        public
+        onlyContract(s_ticketEngine)
+    {
+        ticketsToValhalla[_gameNumber][target] -= amount;
     }
 
     function increaseTotalTickets(uint256 amount) public onlyContract(s_ticketEngine) {

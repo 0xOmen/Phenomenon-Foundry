@@ -470,18 +470,24 @@ contract PhenomenonTicketEngineTests is Test {
     function testCanClaimTicketsAfterGameEnds() public {
         setupGameWithFourProphets();
 
+        uint256 entryFee = phenomenon.s_entranceFee();
+        uint256 totalTokensDeposited = entryFee * 4;
+        uint256 gameNumber = phenomenon.s_gameNumber();
+
         // Buy tickets for prophet 0
         vm.startPrank(user5);
-        ERC20Mock(weth).approve(address(phenomenon), 100 ether);
+        totalTokensDeposited += phenomenonTicketEngine.getPrice(0, 1);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
         phenomenonTicketEngine.getReligion(0, 1);
         vm.stopPrank();
+        assertEq(phenomenon.s_tokensDepositedThisGame(), totalTokensDeposited);
+        assertEq(phenomenon.acolytes(0), 1);
 
         // End the game with prophet 0 as winner
         vm.startPrank(address(gameplayEngine));
-        phenomenon.updateProphetLife(1, false);
         phenomenon.updateProphetLife(2, false);
         phenomenon.updateProphetLife(3, false);
-        phenomenon.updateProphetsRemaining(0, 3);
+        phenomenon.updateProphetsRemaining(0, 2);
         phenomenon.turnManager();
         vm.stopPrank();
 
@@ -490,9 +496,13 @@ contract PhenomenonTicketEngineTests is Test {
         phenomenon.reset(4);
         vm.stopPrank();
 
+        // Calculate tokens per ticket after game fee applied
+        uint256 tokensPerTicket = (totalTokensDeposited * (10000 - phenomenon.s_protocolFee())) / (10000 * 2);
         // Claim tickets from previous game
         vm.startPrank(user5);
-        phenomenonTicketEngine.claimTickets(phenomenon.s_gameNumber() - 1, user5);
+        vm.expectEmit(true, true, true, false);
+        emit ticketsClaimed(user5, tokensPerTicket, phenomenon.s_gameNumber() - 1);
+        phenomenonTicketEngine.claimTickets(gameNumber, user5);
         vm.stopPrank();
     }
 

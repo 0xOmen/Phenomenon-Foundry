@@ -242,7 +242,7 @@ contract PhenomenonTicketEngine {
 
         uint256 tokensToSend = startingUserTickets * i_gameContract.tokensPerTicket(_gameNumber);
         // Remove tickets from msg.sender's balance
-        i_gameContract.decreaseTicketsToValhalla(_player, startingUserTickets);
+        i_gameContract.burnWinningTicketsByGame(_gameNumber, _player, startingUserTickets);
 
         emit ticketsClaimed(_player, tokensToSend, _gameNumber);
 
