@@ -527,6 +527,12 @@ contract PhenomenonTest is Test {
         phenomenon.applyProtocolFee(amount);
         vm.stopPrank();
 
+        // Test nonOwner cannot transfer tokens
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.transferOwnerTokens(amount, owner);
+        vm.stopPrank();
+
         // Now owner can transfer tokens
         vm.startPrank(owner);
         phenomenon.transferOwnerTokens(amount, owner);
