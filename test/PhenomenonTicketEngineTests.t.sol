@@ -617,7 +617,7 @@ contract PhenomenonTicketEngineTests is Test {
         assertEq(uint256(phenomenon.gameStatus()), 0);
         // Check Prophets[] is deleted
         vm.expectRevert();
-        (, bool isAlive,,) = phenomenon.getProphetData(0);
+        phenomenon.getProphetData(0);
         // Check s_tokensDepositedThisGame is reset to 0
         assertEq(phenomenon.s_tokensDepositedThisGame(), 0);
         // Check prophetsRemaining is reset to 0

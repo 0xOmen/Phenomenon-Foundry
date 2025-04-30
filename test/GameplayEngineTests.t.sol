@@ -737,6 +737,29 @@ contract GameplayEngineTests is Test {
         assertEq(uint256(phenomenon.gameStatus()), 2);
     }
 
+    function testCantPlayWhileWaitingForResponse() public {
+        setupGameWithFourProphets();
+
+        // Set prophet 0 (user1) as the current turn
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.setProphetTurn(0);
+        vm.stopPrank();
+
+        // prophet 0 performs miracle
+        vm.startPrank(user1);
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+
+        // Game should be in AWAITING_RESPONSE state
+        assertEq(uint256(phenomenon.gameStatus()), 2);
+
+        // Try to perform action in WAITING_FOR_RESPONSE state
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(GameplayEngine.Game__NotInProgress.selector));
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+    }
+
     function testRuleChecks() public {
         setupGameWithFourProphets();
 
