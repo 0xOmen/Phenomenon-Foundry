@@ -75,6 +75,9 @@ contract Phenomenon {
     ProphetData[] public prophets;
     GameState public gameStatus;
     mapping(uint256 => uint256) public currentProphetTurn;
+
+    /// @notice tracks how many tickets there are in the game (acolytes + high priests)
+    /// @dev gets set to 0 every game in reset()
     uint256 public s_totalTickets;
 
     /// @notice mapping of addresses that have signed up to play by game: prophetList[s_gameNumber][address]
@@ -101,9 +104,6 @@ contract Phenomenon {
     /// @notice high priests cannot buy or sell tickets but can change allegiance
     /// @dev gets 'deleted' every game in reset()
     uint256[] public highPriestsByProphet;
-
-    /// @notice tracks how many tickets there are in the game (acolytes + high priests)
-    /// @dev gets set to 0 every game in reset()
 
     ////////////////////////// Events ////////////////////////////
     event gameEnded(uint256 indexed gameNumber, uint256 indexed tokensPerTicket, uint256 indexed currentProphetTurn);
@@ -201,7 +201,7 @@ contract Phenomenon {
     /**
      * @notice This function resets the game.
      * @dev This function can be called by the owner at any time.
-     * @dev This function can only be called by others if the game is not in progress.
+     * @dev This function can only be called by others if the game is not ENDED.
      * @dev This function can only be called if the number of prophets is between 4 and 9.
      * @dev May need to disable changing the number of prophets in Production?
      * @param _numberOfPlayers The number of prophets/players needed to start the game
@@ -236,7 +236,7 @@ contract Phenomenon {
      * @notice Determine if game is over and advance to next turn.
      * @dev This function can only be called by the GameplayEngine contract.
      * @dev This function ends the game if there is only one prophet remaining.
-     * @dev This function calculates the net protocol fee and distributes it to the owner.
+     * @dev This function calculates the net protocol fee and distributes it to the owner at game end.
      * @dev This function determines and sets how many tokens each winning ticket recieves.
      */
     function turnManager() public onlyContract(s_gameplayEngine) {
@@ -284,7 +284,7 @@ contract Phenomenon {
      * @notice This functions registers an address to play as a prophet.
      * @dev This function can only be called by the GameplayEngine contract.
      * @dev This function should only be called if the gameState is OPEN.
-     * @dev This function can only be called if the number of prophets is between 4 and 9.
+     * @dev This function can only be called if there are prophets still neded to start.
      * @param _prophet The address of the prophet to register.
      */
     function registerProphet(address _prophet) public onlyContract(s_gameplayEngine) {
@@ -313,7 +313,7 @@ contract Phenomenon {
 
     /**
      * @notice This function returns the data of a prophet.
-     * @dev This function is needed for the GameplayEngine contract.
+     * @dev This function is needed for the GameplayEngine and TicketEngine contracts.
      * @param _prophetNum The number of the prophet to get data for.
      * @return The address of the prophet, whether they are alive, whether they are free, and their args.
      */
@@ -364,10 +364,10 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * @notice This function returns the percentage of tickets a prophet has.
-     * @dev This function is needed for the TicketEngine contract.
+     * @dev This function is needed for the GameplayEngine and TicketEngine contracts.
      * @dev Due to precision loss with division this will return 0% if actual percentage is < 1%
      * @param _playerNum The number of the prophet to get the ticket share for.
-     * @return The ticket share of the prophet as percentage.
+     * @return The ticket share of the prophet as percentage (e.g. 1/3 returns '33').
      */
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
         if (s_totalTickets == 0) return 0;
@@ -445,8 +445,8 @@ contract Phenomenon {
     function depositGameTokens(address from, uint256 amount) external onlyContract(s_ticketEngine) {
         IERC20(GAME_TOKEN).transferFrom(from, address(this), amount);
     }
-    // non-reentrant?
 
+    // non-reentrant?
     function returnGameTokens(address to, uint256 amount) external onlyContract(s_ticketEngine) {
         IERC20(GAME_TOKEN).transfer(to, amount);
     }
@@ -462,8 +462,8 @@ contract Phenomenon {
         s_ownerTokenBalance -= _amount;
         IERC20(GAME_TOKEN).transfer(_destination, _amount);
     }
-    // This can be abused and should either be removed or revokable
 
+    // This can be abused and should either be removed or revokable
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
         IERC20(_token).transfer(_destination, _amount);
     }

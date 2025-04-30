@@ -93,12 +93,12 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         (, currentLeaderAlive,,) = getProphetData(senderAllegiance);
         // Can't change allegiance if following an eliminated prophet
         if (currentLeaderAlive == false) {
-            // Allegiance automatically set to self?
+            // Allegiance automatically set to self
             if ((senderProphetArgs != 99 && senderAllegiance != _senderProphetNum)) {
                 revert TicketEng__AddressIsEliminated();
             }
         }
-        // Check if gameStaus is IN_PROGRESS or 1
+        // Check if gameStaus is IN_PROGRESS (i.e 1)
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
             revert TicketEng__NotInProgress();
@@ -163,7 +163,9 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         i_gameContract.increaseAcolytes(_prophetNum, _ticketsToBuy);
         i_gameContract.increaseTotalTickets(_ticketsToBuy);
         i_gameContract.increaseTokenDepositedThisGame(totalPrice);
-        i_gameContract.setPlayerAllegiance(msg.sender, _prophetNum);
+        if (senderTicketCount == 0) {
+            i_gameContract.setPlayerAllegiance(msg.sender, _prophetNum);
+        }
         emit gainReligion(_prophetNum, _ticketsToBuy, totalPrice, msg.sender);
 
         i_gameContract.depositGameTokens(msg.sender, totalPrice);

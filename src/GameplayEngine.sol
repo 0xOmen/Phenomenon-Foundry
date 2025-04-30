@@ -87,13 +87,17 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         s_allowListRoot = _allowListRoot;
     }
 
+    function changeGasLimit(uint32 _gasLimit) public onlyOwner {
+        gasLimit = _gasLimit;
+    }
+
     /**
      * @notice This function allows an address to register as a prophet.
-     * @dev This function can only be called if the game is open for registration.
-     * @dev This function can only be called if the number of prophets is less than the maximum number of prophets.
-     * @dev This function can only be called if the sender is not already registered.
+     * @dev This function reverts if the game is not open for registration.
+     * @dev This function reverts if the number of prophets is less than the maximum number of prophets.
+     * @dev This function reverts if the sender is already registered.
      * @dev This function calls registerProphet() in Phenomenon.sol which transfers the entrance fee from the sender to the contract.
-     * @dev If the game fills, the function will start the game.
+     * @dev If the game fills, this function will start the game.
      * @param _allowListProof The proof of the sender's inclusion in the allow list.
      */
     function enterGame(bytes32[] memory _allowListProof) public {
@@ -130,7 +134,6 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
     /**
      * @notice This function starts the game.
-     * @dev This function can only be called if the number of prophets is equal to the maximum number of prophets.
      * @dev This function can only be called by enterGame() when the game fills.
      * @param numberOfProphets The maximum number of prophets that can enter the game.
      */
@@ -154,15 +157,15 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
         // 3. semi-randomly select which prophet goes first
         i_gameContract.setProphetTurn(block.timestamp % numberOfProphets);
-        // Check if prophet is chosenOne, if not then randomly assign to priest or prophet
-        // Add Chainlink call here
+
+        // Request computation from Chainlink Function
         sendRequest(3);
     }
 
     /**
      * @notice This function attempts to perform a miracle in the game.
-     * @dev This function can only be called if the game is in progress.
-     * @dev This function can only be called by the prophet who is currently in turn.
+     * @dev This function reverts if the game is not in progress.
+     * @dev This function reverts if not called by the prophet who is currently in turn.
      */
     function performMiracle() public {
         ruleCheck();
@@ -171,8 +174,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
     /**
      * @notice This function forces the current prophet to perform a miracle.
-     * @dev This function can only be called if the maximum time interval has passed from the last turn.
-     * @dev This function can only be called if the game is in progress.
+     * @dev This function reverts if the maximum time interval has not passed from the last turn.
+     * @dev This function reverts if the game is not in progress.
      */
     function forceMiracle() public {
         // Maximum time interval must have passed from last turn
@@ -188,8 +191,9 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
     /**
      * @notice This function attempts to smite an opponent prophet.
-     * @dev This function can only be called if the game is in progress.
-     * @dev This function can only be called by the prophet who's turn it is.
+     * @dev This function reverts if the game is not in progress.
+     * @dev This function reverts if not called by the prophet who's turn it is.
+     * @dev This function reverts if the target is not a valid prophet or is not alive.
      * @param _target The number of the prophet to smite.
      */
     function attemptSmite(uint256 _target) public {
@@ -205,8 +209,9 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
 
     /**
      * @notice This function attempts to accuse an opponent prophet of blasphemy.
-     * @dev This function can only be called if the game is in progress.
-     * @dev This function can only be called by the prophet who's turn it is.
+     * @dev This function reverts if the game is not in progress.
+     * @dev This function reverts if not called by the prophet who's turn it is.
+     * @dev This function reverts if the target is not a valid prophet or is not alive.
      * @param _target The number of the prophet to accuse.
      */
     function accuseOfBlasphemy(uint256 _target) public {
@@ -350,7 +355,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             // Logic for unsuccessful accusation
             else if (response[0] == "4") {
                 (,,, uint256 target) = i_gameContract.getProphetData(_currentProphetTurn);
-                // if in jail, release from jail
+                // if target is in jail, release from jail
                 i_gameContract.updateProphetFreedom(target, true);
                 // put accuser in jail
                 i_gameContract.updateProphetFreedom(_currentProphetTurn, false);
