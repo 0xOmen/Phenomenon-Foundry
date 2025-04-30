@@ -614,6 +614,12 @@ contract PhenomenonTest is Test {
         // Mint tokens directly to the phenomenon contract
         differentToken.mint(address(phenomenon), amount);
 
+        // Test unapproved address cannot transfer any token
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.ownerTokenTransfer(amount, address(differentToken), owner);
+        vm.stopPrank();
+
         // Owner can transfer any token from the contract
         vm.startPrank(owner);
         phenomenon.ownerTokenTransfer(amount, address(differentToken), owner);
@@ -887,5 +893,30 @@ contract PhenomenonTest is Test {
         phenomenon.applyProtocolFee(1);
         vm.stopPrank();
     }
-    
+
+    /*//////////////////////////////////////////////////////////////
+                       GAMEPLAY ENGINE ACCESS TESTS
+    //////////////////////////////////////////////////////////////*/
+    function testUnapproveAddressAccessTests() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.setRandomnessSeed(12345);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.turnManager();
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.changeGameStatus(4);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.registerProphet(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.updateProphetLife(0, true);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.updateProphetFreedom(0, true);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.updateProphetArgs(0, 12345);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.setProphetTurn(0);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.updateProphetsRemaining(1, 0);
+        vm.stopPrank();
+    }
 }
