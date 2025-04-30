@@ -96,12 +96,26 @@ contract PhenomenonTest is Test {
         vm.stopPrank();
     }
 
+    function testNonOwnerCannotChangeTicketEngine() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.changeTicketEngine(newTicketEngine);
+        vm.stopPrank();
+    }
+
     function testOwnerCanChangeGameToken() public {
         vm.startPrank(owner);
         phenomenon.changeGameToken(newGameToken);
         vm.stopPrank();
 
         assertEq(phenomenon.getGameToken(), newGameToken);
+    }
+
+    function testNonOwnerCannotChangeGameToken() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.changeGameToken(newGameToken);
+        vm.stopPrank();
     }
 
     function testOwnerCanChangeEntryFee() public {
@@ -113,6 +127,13 @@ contract PhenomenonTest is Test {
         assertEq(phenomenon.s_entranceFee(), newFee);
     }
 
+    function testNonOwnerCannotChangeEntryFee() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.changeEntryFee(1);
+        vm.stopPrank();
+    }
+
     function testOwnerCanSetProtocolFee() public {
         uint256 newFee = 1000; // 10%
         vm.startPrank(owner);
@@ -120,6 +141,13 @@ contract PhenomenonTest is Test {
         vm.stopPrank();
 
         assertEq(phenomenon.s_protocolFee(), newFee);
+    }
+
+    function testNonOwnerCannotSetProtocolFee() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.setProtocolFee(1);
+        vm.stopPrank();
     }
 
     function testCannotSetProtocolFeeTooHigh() public {
@@ -139,6 +167,13 @@ contract PhenomenonTest is Test {
         assertEq(phenomenon.s_maxInterval(), newInterval);
     }
 
+    function testNonOwnerCannotSetMaxInterval() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.setMaxInterval(1);
+        vm.stopPrank();
+    }
+
     function testOwnerCanSetMinInterval() public {
         uint256 newInterval = 60; // 1 minute
         vm.startPrank(owner);
@@ -146,6 +181,13 @@ contract PhenomenonTest is Test {
         vm.stopPrank();
 
         assertEq(phenomenon.s_minInterval(), newInterval);
+    }
+
+    function testNonOwnerCannotSetMinInterval() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.setMinInterval(1);
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -158,6 +200,13 @@ contract PhenomenonTest is Test {
         vm.stopPrank();
 
         assertEq(uint256(phenomenon.gameStatus()), uint256(Phenomenon.GameState.PAUSED));
+    }
+
+    function testNonOwnerCannotChangeGameState() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
+        phenomenon.ownerChangeGameState(Phenomenon.GameState.PAUSED);
+        vm.stopPrank();
     }
 
     function testResetGameIncrementsGameNumber() public {
