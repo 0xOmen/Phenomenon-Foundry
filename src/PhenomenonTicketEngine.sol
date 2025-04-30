@@ -253,7 +253,8 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     /**
      * @notice This function calculates the price of tickets based on the supply and amount of tickets.
-     * @dev This is the bonding curve that determines the ticket price for each prophet.
+     * @dev This is the bonding curve that determines the cumulative ticket price for each prophet.
+     * @dev Bonding Curve: ticketPrice = 0.001*supply + 0.50
      * @param supply The supply of tickets.
      * @param amount The amount of tickets to calculate the price for.
      * @return The total price for the tickets being exchanged.
