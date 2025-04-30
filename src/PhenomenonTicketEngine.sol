@@ -3,6 +3,7 @@
 pragma solidity ^0.8.19;
 
 import {Phenomenon} from "./Phenomenon.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title PhenomenonTicketEngine
@@ -12,7 +13,7 @@ import {Phenomenon} from "./Phenomenon.sol";
  * @dev This contract must be whitelisted on the Game contract to use the game
  * contract's Mint and Burn Functions.
  */
-contract PhenomenonTicketEngine {
+contract PhenomenonTicketEngine is ReentrancyGuard {
     error TicketEng__NotAllowed();
     error TicketEng__NotInProgress();
     error TicketEng__AddressIsEliminated();
@@ -118,7 +119,7 @@ contract PhenomenonTicketEngine {
      * @param _prophetNum The number of the prophet to buy tickets of.
      * @param _ticketsToBuy The number of tickets to buy.
      */
-    function getReligion(uint256 _prophetNum, uint256 _ticketsToBuy) public {
+    function getReligion(uint256 _prophetNum, uint256 _ticketsToBuy) public nonReentrant {
         // Make sure game state allows for tickets to be bought
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
@@ -174,7 +175,7 @@ contract PhenomenonTicketEngine {
      * @dev This function can only be called by a prophet.
      * @param _ticketsToSell The number of tickets to sell.
      */
-    function loseReligion(uint256 _ticketsToSell) public {
+    function loseReligion(uint256 _ticketsToSell) public nonReentrant {
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
             revert TicketEng__NotInProgress();
@@ -225,7 +226,7 @@ contract PhenomenonTicketEngine {
      * @param _gameNumber The number of the game to claim tickets from.
      * @param _player The address to claim tickets for.
      */
-    function claimTickets(uint256 _gameNumber, address _player) public {
+    function claimTickets(uint256 _gameNumber, address _player) public nonReentrant {
         uint256 currentGameNumber = i_gameContract.s_gameNumber();
         if (_gameNumber >= currentGameNumber) {
             revert TicketEng__NotAllowed();
