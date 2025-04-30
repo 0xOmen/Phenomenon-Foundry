@@ -50,6 +50,7 @@ contract Phenomenon {
 
     uint256 public s_entranceFee;
     uint256 public s_protocolFee;
+    bool private ownerCanTransferAnyToken;
 
     /// @notice The number of prophets/players needed to start the game
     uint16 public s_numberOfProphets;
@@ -146,6 +147,7 @@ contract Phenomenon {
 
         GAME_TOKEN = _gameToken;
         s_tokensDepositedThisGame = 0;
+        ownerCanTransferAnyToken = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +467,13 @@ contract Phenomenon {
 
     // This can be abused and should either be removed or revokable
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
-        IERC20(_token).transfer(_destination, _amount);
+        if (ownerCanTransferAnyToken) {
+            IERC20(_token).transfer(_destination, _amount);
+        }
+    }
+
+    function burnOwnerGodMode() public onlyOwner {
+        ownerCanTransferAnyToken = false;
     }
 
     function getGameToken() public view returns (address) {
