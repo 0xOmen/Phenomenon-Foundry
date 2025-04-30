@@ -465,6 +465,34 @@ contract PhenomenonTicketEngineTests is Test {
         assertEq(phenomenon.getTicketShare(2), 40);
     }
 
+    function testCannotSellTicketsIfNotInProgress() public {
+        setupGameWithFourProphets();
+
+        // Set Prophet turn to 0
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.setProphetTurn(0);
+        vm.stopPrank();
+
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+        // Prophet0 attempts miracle
+        vm.startPrank(user1);
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+
+        // Try to buy tickets
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotInProgress.selector));
+        phenomenonTicketEngine.getReligion(0, 1);
+        // try to sell tickets
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__NotInProgress.selector));
+        phenomenonTicketEngine.loseReligion(1);
+        vm.stopPrank();
+    }
+
     /*//////////////////////////////////////////////////////////////
                         GAME END TESTS
     //////////////////////////////////////////////////////////////*/
