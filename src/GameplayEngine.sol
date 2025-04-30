@@ -313,6 +313,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         s_lastFunctionResponse = response;
         s_lastFunctionError = err;
 
+        i_gameContract.changeGameStatus(1);
+
         //logic to change state of contract
         if (response.length == 1) {
             uint256 _currentProphetTurn = i_gameContract.getCurrentProphetTurn();
@@ -386,7 +388,6 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             }
             emit gameStarted(i_gameContract.s_gameNumber());
         }
-        i_gameContract.changeGameStatus(1);
     }
 
     function getOwner() public view returns (address) {

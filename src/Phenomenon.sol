@@ -13,6 +13,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  *
  * @dev This is the main Game contract that stores game state.
  */
+
 contract Phenomenon {
     ///////////////////////////// Errors ///////////////////////////////////
     error Game__ProphetNumberError();
@@ -241,7 +242,6 @@ contract Phenomenon {
     function turnManager() public onlyContract(s_gameplayEngine) {
         bool stillFinding = true;
         if (s_prophetsRemaining == 1) {
-            gameStatus = GameState.ENDED;
             if (prophets[currentProphetTurn[s_gameNumber]].isAlive) {
                 stillFinding = false;
             }
@@ -272,6 +272,7 @@ contract Phenomenon {
                 tokensPerTicket[s_gameNumber] = 0;
                 s_ownerTokenBalance += s_tokensDepositedThisGame;
             }
+            gameStatus = GameState.ENDED;
             emit gameEnded(s_gameNumber, tokensPerTicket[s_gameNumber], currentProphetTurn[s_gameNumber]);
         }
     }

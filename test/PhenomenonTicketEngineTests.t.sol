@@ -40,6 +40,7 @@ contract PhenomenonTicketEngineTests is Test {
         uint256 indexed _target, uint256 indexed numTicketsBought, uint256 indexed totalPrice, address sender
     );
     event ticketsClaimed(address indexed player, uint256 indexed tokensSent, uint256 indexed gameNumber);
+    event gameEnded(uint256 indexed gameNumber, uint256 tokensPerTicket, uint256 winner);
 
     function setUp() public {
         DeployPhenomenon deployer = new DeployPhenomenon();
@@ -463,6 +464,83 @@ contract PhenomenonTicketEngineTests is Test {
         assertEq(phenomenon.getTicketShare(2), 40);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        GAME END TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function testGameEnding() public {
+        setupGameWithFourProphets();
+
+        uint256 entryFee = phenomenon.s_entranceFee();
+        uint256 totalTokensDeposited = entryFee * 4;
+        uint256 gameNumber = phenomenon.s_gameNumber();
+
+        // Set prophet 0 (user1) as the current turn
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.setProphetTurn(0);
+        vm.stopPrank();
+
+        //User5 buys tickets of prophet 0
+        vm.startPrank(user5);
+        totalTokensDeposited += phenomenonTicketEngine.getPrice(0, 3);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(2, 3);
+        vm.stopPrank();
+
+        // User1 attempts to smite user2 (prophet 2)
+        vm.startPrank(user1);
+        gameplayEngine.attemptSmite(2);
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("3");
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // User4 (prophet 3) fails a miracle
+        vm.startPrank(user4);
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        requestId = gameplayEngine.s_lastFunctionRequestId();
+        response = mockFunctionsRouterSimple._fulfillRequest("0");
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // Check gameStatus is Ended
+        uint256 gameState = uint256(phenomenon.gameStatus());
+        assertEq(gameState, 4);
+        // Check prophet 0 is set as currentProphetTurn and thus winner
+        assertEq(phenomenon.currentProphetTurn(gameNumber), 0);
+        // Check prophetsRemaining is 1
+        assertEq(phenomenon.s_prophetsRemaining(), 1);
+        // Start new game
+        vm.startPrank(owner);
+        phenomenon.reset(4);
+        vm.stopPrank();
+    }
     /*//////////////////////////////////////////////////////////////
                        CLAIM TICKETS TESTS
     //////////////////////////////////////////////////////////////*/
