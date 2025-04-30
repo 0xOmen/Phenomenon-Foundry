@@ -565,6 +565,12 @@ contract PhenomenonTest is Test {
         uint256 initialContractBalance = ERC20Mock(weth).balanceOf(address(phenomenon));
         uint256 initialUser1Balance = ERC20Mock(weth).balanceOf(user1);
 
+        // Test unapproved address cannot deposit tokens
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.depositGameTokens(user1, amount);
+        vm.stopPrank();
+
         // Deposit tokens
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.depositGameTokens(user1, amount);
@@ -583,6 +589,12 @@ contract PhenomenonTest is Test {
 
         uint256 initialContractBalance = ERC20Mock(weth).balanceOf(address(phenomenon));
         uint256 initialUser1Balance = ERC20Mock(weth).balanceOf(user1);
+
+        // Test unapproved address cannot return tokens
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.returnGameTokens(user1, amount);
+        vm.stopPrank();
 
         // Return tokens
         vm.startPrank(address(phenomenonTicketEngine));
@@ -620,6 +632,12 @@ contract PhenomenonTest is Test {
         uint256 amount = 5;
         uint256 initialTickets = phenomenon.s_totalTickets();
 
+        // Test unapproved address cannot increase tickets
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.increaseTotalTickets(amount);
+        vm.stopPrank();
+
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.increaseTotalTickets(amount);
         vm.stopPrank();
@@ -630,6 +648,12 @@ contract PhenomenonTest is Test {
     function testDecreaseTotalTickets() public {
         // First increase tickets
         uint256 amount = 5;
+
+        // Test unapproved address cannot decrease tickets
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.decreaseTotalTickets(amount);
+        vm.stopPrank();
 
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.increaseTotalTickets(amount);
@@ -646,6 +670,12 @@ contract PhenomenonTest is Test {
         uint256 amount = 10 ether;
         uint256 initialDeposit = phenomenon.s_tokensDepositedThisGame();
 
+        // Test unapproved address cannot increase tokens deposited this game
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.increaseTokenDepositedThisGame(amount);
+        vm.stopPrank();
+
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.increaseTokenDepositedThisGame(amount);
         vm.stopPrank();
@@ -660,8 +690,16 @@ contract PhenomenonTest is Test {
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.increaseTokenDepositedThisGame(amount);
         uint256 currentDeposit = phenomenon.s_tokensDepositedThisGame();
+        vm.stopPrank();
+
+        // Test unapproved address cannot decrease tokens deposited this game
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.decreaseTokensDepositedThisGame(5 ether);
+        vm.stopPrank();
 
         // Then decrease deposits
+        vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.decreaseTokensDepositedThisGame(5 ether);
         vm.stopPrank();
 
@@ -671,6 +709,12 @@ contract PhenomenonTest is Test {
     function testSetPlayerAllegiance() public {
         uint256 gameNumber = phenomenon.s_gameNumber();
         uint256 target = 3;
+
+        // Test unapproved address cannot set player allegiance
+        vm.startPrank(user5);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.setPlayerAllegiance(user1, target);
+        vm.stopPrank();
 
         vm.startPrank(address(phenomenonTicketEngine));
         phenomenon.setPlayerAllegiance(user1, target);
@@ -746,10 +790,32 @@ contract PhenomenonTest is Test {
         // Verify
         assertEq(phenomenon.acolytes(0), 3); // 5 - 2
         vm.stopPrank();
+
+        // Test unapproved address cannot decrease acolytes
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.increaseAcolytes(0, 2);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.decreaseAcolytes(0, 2);
+        vm.stopPrank();
+
+        // Test ticket engine can adjust acolytes
+        vm.startPrank(address(phenomenonTicketEngine));
+        phenomenon.increaseAcolytes(0, 2);
+        phenomenon.decreaseAcolytes(0, 2);
+        vm.stopPrank();
     }
 
     function testIncreaseDecreaseTicketsToValhalla() public {
         uint256 gameNumber = phenomenon.s_gameNumber();
+
+        // Test unapproved address cannot increase or decrease tickets to valhalla
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.increaseTicketsToValhalla(user1, 10);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.decreaseTicketsToValhalla(user1, 1);
+        vm.stopPrank();
 
         vm.startPrank(address(phenomenonTicketEngine));
 
@@ -781,6 +847,14 @@ contract PhenomenonTest is Test {
         vm.startPrank(address(gameplayEngine));
         phenomenon.registerProphet(user1);
 
+        // Test unapproved address cannot increase or decrease high priests
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.increaseHighPriest(0);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.decreaseHighPriest(0);
+        vm.stopPrank();
+
         vm.startPrank(address(phenomenonTicketEngine));
 
         // Verify (initial value is 1)
@@ -799,4 +873,19 @@ contract PhenomenonTest is Test {
         assertEq(phenomenon.highPriestsByProphet(0), 1);
         vm.stopPrank();
     }
+
+    function testUnapprovedAddressCannotBurnTickets() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.burnWinningTicketsByGame(1, user1, 1);
+        vm.stopPrank();
+    }
+
+    function testUnapprovedAddressCannotApplyFee() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyController.selector));
+        phenomenon.applyProtocolFee(1);
+        vm.stopPrank();
+    }
+    
 }
