@@ -259,11 +259,13 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
      * @return The total price for the tickets being exchanged.
      */
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
-        uint256 sum1 = supply == 0 ? 0 : ((supply) * (1 + supply) * (2 * (supply) + 1)) / 6;
-        uint256 sum2 =
-            (((1 + supply) + amount - 1) * ((1 + supply) + amount) * (2 * ((1 + supply) + amount - 1) + 1)) / 6;
-        uint256 summation = sum2 - sum1;
-        return (((summation * 1 ether) * s_ticketMultiplier) / 2);
+        uint256 firstPrice = 500 * s_ticketMultiplier + supply; // First ticket price in wei
+        uint256 lastPrice = 500 * s_ticketMultiplier + (supply + amount - 1); // Last ticket price in wei
+
+        // Sum of arithmetic series formula
+        uint256 totalCost = (amount * (firstPrice + lastPrice)) / 2;
+
+        return totalCost;
     }
 
     function getProphetData(uint256 prophetNum) public view returns (address, bool, bool, uint256) {
