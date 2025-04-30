@@ -41,6 +41,7 @@ contract PhenomenonTicketEngineTests is Test {
     );
     event ticketsClaimed(address indexed player, uint256 indexed tokensSent, uint256 indexed gameNumber);
     event gameEnded(uint256 indexed gameNumber, uint256 tokensPerTicket, uint256 winner);
+    event gameReset(uint256 indexed gameNumber);
 
     function setUp() public {
         DeployPhenomenon deployer = new DeployPhenomenon();
@@ -536,10 +537,101 @@ contract PhenomenonTicketEngineTests is Test {
         assertEq(phenomenon.currentProphetTurn(gameNumber), 0);
         // Check prophetsRemaining is 1
         assertEq(phenomenon.s_prophetsRemaining(), 1);
-        // Start new game
+    }
+
+    function testReset() public {
+        setupGameWithFourProphets();
+        uint256 startingGameNumber = phenomenon.s_gameNumber();
+        // Set prophet 0 (user1) as the current turn
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.setProphetTurn(0);
+        vm.stopPrank();
+
+        //User5 buys tickets of prophet 2
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(2, 3);
+        vm.stopPrank();
+
+        // User1 attempts to smite user2 (prophet 2)
+        vm.startPrank(user1);
+        gameplayEngine.attemptSmite(2);
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        bytes memory response = mockFunctionsRouterSimple._fulfillRequest("3");
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+
+        // User4 (prophet 3) fails a miracle
+        vm.startPrank(user4);
+        gameplayEngine.performMiracle();
+        vm.stopPrank();
+
+        ///////////// Start fullfillRequest Sequence /////////////
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        vm.stopPrank();
+
+        requestId = gameplayEngine.s_lastFunctionRequestId();
+        response = mockFunctionsRouterSimple._fulfillRequest("0");
+
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, response, "");
+
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+        ///////////// End fullfillRequest Sequence /////////////
+        // Check reverts if prophets <4
         vm.startPrank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__ProphetNumberError.selector));
+        phenomenon.reset(3);
+        vm.stopPrank();
+
+        // Check reverts if prophets >9
+        vm.startPrank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__ProphetNumberError.selector));
+        phenomenon.reset(10);
+
+        // expect emit
+        vm.expectEmit(true, false, false, false);
+        emit gameReset(startingGameNumber + 1);
         phenomenon.reset(4);
         vm.stopPrank();
+
+        // Check gameNumber is incremented
+        assertEq(phenomenon.s_gameNumber(), startingGameNumber + 1);
+        // Check gameStatus is reset to Open
+        assertEq(uint256(phenomenon.gameStatus()), 0);
+        // Check Prophets[] is deleted
+        vm.expectRevert();
+        (, bool isAlive,,) = phenomenon.getProphetData(0);
+        // Check s_tokensDepositedThisGame is reset to 0
+        assertEq(phenomenon.s_tokensDepositedThisGame(), 0);
+        // Check prophetsRemaining is reset to 0
+        assertEq(phenomenon.s_prophetsRemaining(), 0);
+        // Check s_numberOfProphets is reset to 4
+        assertEq(phenomenon.s_numberOfProphets(), 4);
+        // Check acolytes is reset to 0
+        vm.expectRevert();
+        assertEq(phenomenon.acolytes(2), 0);
+        // Check highPriestsByProphet is reset to 0
+        vm.expectRevert();
+        assertEq(phenomenon.highPriestsByProphet(0), 0);
+        // Check s_totalTickets is reset to 0
+        assertEq(phenomenon.s_totalTickets(), 0);
     }
     /*//////////////////////////////////////////////////////////////
                        CLAIM TICKETS TESTS
