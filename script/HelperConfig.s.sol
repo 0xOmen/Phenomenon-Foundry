@@ -31,7 +31,7 @@ contract HelperConfig is Script {
             chainlinkFunctionsRouter: 0xf9B8fc078197181C841c296C876945aaa425B278,
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
             wETH: 0x4200000000000000000000000000000000000006,
-            subscriptionId: 1234,
+            subscriptionId: 313,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
