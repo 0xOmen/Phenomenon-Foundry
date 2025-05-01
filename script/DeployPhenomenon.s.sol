@@ -8,6 +8,13 @@ import {GameplayEngine} from "../src/GameplayEngine.sol";
 import {PhenomenonTicketEngine} from "../src/PhenomenonTicketEngine.sol";
 
 contract DeployPhenomenon is Script {
+    uint256 maxInterval = 180;
+    uint256 minInterval = 0;
+    uint256 entranceFee = 500000;
+    uint256 protocolFee = 500;
+    uint16 numProphets = 4;
+    uint256 ticketMultiplier = 100000;
+
     function run()
         public
         returns (address, bytes32, address, uint256, Phenomenon, PhenomenonTicketEngine, GameplayEngine)
@@ -18,11 +25,12 @@ contract DeployPhenomenon is Script {
             address chainlinkFunctionsRouter,
             bytes32 chainlinkFunctionsDONID,
             uint64 subscriptionId,
-            address wETH,
+            address gameToken,
             uint256 deployerKey
         ) = helperConfig.activeNetworkConfig();
         vm.startBroadcast(deployerKey);
-        Phenomenon phenomenon = new Phenomenon(180, 0, 1000, 500, 4, wETH);
+        Phenomenon phenomenon =
+            new Phenomenon(maxInterval, minInterval, entranceFee, protocolFee, numProphets, gameToken);
         GameplayEngine gameplayEngine = new GameplayEngine(
             address(phenomenon),
             "return Functions.encodeString('Hello World!');",
@@ -30,14 +38,15 @@ contract DeployPhenomenon is Script {
             chainlinkFunctionsRouter,
             chainlinkFunctionsDONID
         );
-        PhenomenonTicketEngine phenomenonTicketEngine = new PhenomenonTicketEngine(address(phenomenon), 1000);
+        PhenomenonTicketEngine phenomenonTicketEngine =
+            new PhenomenonTicketEngine(address(phenomenon), ticketMultiplier);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         phenomenon.changeTicketEngine(address(phenomenonTicketEngine));
         vm.stopBroadcast();
         return (
             chainlinkFunctionsRouter,
             chainlinkFunctionsDONID,
-            wETH,
+            gameToken,
             deployerKey,
             phenomenon,
             phenomenonTicketEngine,

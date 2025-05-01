@@ -43,7 +43,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     constructor(
         address gameContractAddress,
-        uint256 ticketMultiplier // 1000
+        uint256 ticketMultiplier // used for decimals: USDC = 10^6, ETH = 10^18
     ) {
         owner = msg.sender;
         i_gameContract = Phenomenon(gameContractAddress);

@@ -130,7 +130,7 @@ contract Phenomenon {
     constructor(
         uint256 _maxInterval, //180 (3 minutes)
         uint256 _minInterval, //0 (instant)
-        uint256 _entranceFee, //10000000000000000000000  (10,000)
+        uint256 _entranceFee, //account for decimals of gameToken: 500000 = 0.50 USDC
         uint256 _protocolFee, //500 = 5%
         uint16 _numProphets,
         address _gameToken //0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed $DEGEN
