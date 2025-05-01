@@ -32,7 +32,7 @@ contract HelperConfig is Script {
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
             gameToken: 0xbAA34eb15E2733E2AFE8826251f029AcE353F405, // custon USDC token clone
             subscriptionId: 313,
-            deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: vm.envUint("DEPLOYER_KEY")
         });
     }
 
