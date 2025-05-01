@@ -12,7 +12,7 @@ contract HelperConfig is Script {
         address chainlinkFunctionsRouter;
         bytes32 chainlinkFunctionsDONID;
         uint64 subscriptionId;
-        address wETH;
+        address gameToken;
         uint256 deployerKey;
     }
 
@@ -30,7 +30,7 @@ contract HelperConfig is Script {
         return NetworkConfig({
             chainlinkFunctionsRouter: 0xf9B8fc078197181C841c296C876945aaa425B278,
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
-            wETH: 0x4200000000000000000000000000000000000006,
+            gameToken: 0xbAA34eb15E2733E2AFE8826251f029AcE353F405, // custon USDC token clone
             subscriptionId: 313,
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
@@ -50,7 +50,7 @@ contract HelperConfig is Script {
             chainlinkFunctionsRouter: address(mockFunctionsRouterSimple),
             chainlinkFunctionsDONID: bytes32(0),
             subscriptionId: 1234,
-            wETH: address(wETHMock),
+            gameToken: address(wETHMock),
             deployerKey: DEFAULT_ANVIL_KEY
         });
         return anvilNetworkConfig;

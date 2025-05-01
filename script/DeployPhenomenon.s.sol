@@ -9,8 +9,8 @@ import {PhenomenonTicketEngine} from "../src/PhenomenonTicketEngine.sol";
 
 contract DeployPhenomenon is Script {
     uint256 maxInterval = 180;
-    uint256 minInterval = 0;
-    uint256 entranceFee = 500000;
+    uint256 minInterval = 25;
+    uint256 entranceFee = 500000; // $0.50 for USDC
     uint256 protocolFee = 500;
     uint16 numProphets = 4;
     uint256 ticketMultiplier = 100000;
