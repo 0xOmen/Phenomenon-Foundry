@@ -398,4 +398,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     function getOwner() public view returns (address) {
         return owner();
     }
+
+    function changeDonHostedSecretsSlotID(uint8 _donHostedSecretsSlotID) public onlyOwner {
+        donHostedSecretsSlotID = _donHostedSecretsSlotID;
+    }
+
+    function changeDonHostedSecretsVersion(uint64 _donHostedSecretsVersion) public onlyOwner {
+        donHostedSecretsVersion = _donHostedSecretsVersion;
+    }
 }
