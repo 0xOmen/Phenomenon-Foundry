@@ -37,3 +37,6 @@ endif
 
 deploy: 
 	@forge script script/DeployPhenomenon.s.sol:DeployPhenomenon --rpc-url $(BASE_SEPOLIA_RPC) --account deployer --sender 0xa25CB4e9e15680220d2b9c23E6bde63E487c5b1D --broadcast --verify --etherscan-api-key $(BASESCAN_API_KEY) -vvvv
+
+entergame: 
+	cast send 0x1ef73a17bC9df0eec4088A08acF6d8f752a6E100 "enterGame(bytes32[])" [] --rpc-url $BASE_SEPOLIA_RPC --account player1
