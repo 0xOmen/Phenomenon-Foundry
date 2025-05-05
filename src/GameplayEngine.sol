@@ -5,9 +5,9 @@ pragma solidity ^0.8.19;
 import {Phenomenon} from "./Phenomenon.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {FunctionsRequest} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 import {FunctionsClient} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
-import {FunctionsRequest} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 
 /**
  * @title GameplayEngine
@@ -138,7 +138,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
      * @param numberOfProphets The maximum number of prophets that can enter the game.
      */
     function startGame(uint256 numberOfProphets) internal {
-        /* Not needed if internal and only called from enterGame() as it is checked there
+        /* Not needed if function is private and only called from enterGame() as it is checked there
         if (gameStatus != 0) {
             revert Game__NotOpen();
         }

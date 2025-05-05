@@ -80,7 +80,12 @@ contract DeployPhenomenon is Script {
             address gameToken,
             uint256 deployerKey
         ) = helperConfig.activeNetworkConfig();
-        vm.startBroadcast(deployerKey);
+        if (deployerKey == 0) {
+            vm.startBroadcast();
+        } else {
+            vm.startBroadcast(deployerKey);
+        }
+
         Phenomenon phenomenon =
             new Phenomenon(maxInterval, minInterval, entranceFee, protocolFee, numProphets, gameToken);
         GameplayEngine gameplayEngine = new GameplayEngine(

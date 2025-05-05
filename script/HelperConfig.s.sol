@@ -26,13 +26,13 @@ contract HelperConfig is Script {
         }
     }
 
-    function getSepoliaBaseConfig() public view returns (NetworkConfig memory) {
+    function getSepoliaBaseConfig() public pure returns (NetworkConfig memory) {
         return NetworkConfig({
             chainlinkFunctionsRouter: 0xf9B8fc078197181C841c296C876945aaa425B278,
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
             gameToken: 0xbAA34eb15E2733E2AFE8826251f029AcE353F405, // custon USDC token clone
             subscriptionId: 313,
-            deployerKey: vm.envUint("DEPLOYER_KEY")
+            deployerKey: 0
         });
     }
 
