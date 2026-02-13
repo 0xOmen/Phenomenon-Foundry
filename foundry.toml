@@ -3,7 +3,8 @@ src = "src"
 out = "out"
 libs = ["lib"]
 remappings = [
-    '@chainlink/contracts/=lib/chianlink-brownie-contracts/contracts/',
+    '@../../lib/chainlink/contracts/=lib/chainlink/contracts/',
+    '@chainlink/contracts/=lib/chainlink/contracts/',
     '@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
 ]
 

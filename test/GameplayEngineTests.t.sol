@@ -331,6 +331,8 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         // User1 performs a miracle
         vm.startPrank(user1);
         gameplayEngine.performMiracle();
@@ -376,6 +378,8 @@ contract GameplayEngineTests is Test {
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User1 performs a miracle
         vm.startPrank(user1);
@@ -427,6 +431,8 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         // User1 attempts to smite user2 (prophet 2)
         vm.startPrank(user1);
         gameplayEngine.attemptSmite(2);
@@ -471,6 +477,8 @@ contract GameplayEngineTests is Test {
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User1 attempts to smite user2 (prophet 2)
         vm.startPrank(user1);
@@ -520,6 +528,8 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         // User1 accuses user4 (prophet 3) of blasphemy
         vm.startPrank(user1);
         gameplayEngine.accuseOfBlasphemy(3);
@@ -552,6 +562,8 @@ contract GameplayEngineTests is Test {
 
         // But still alive
         assertTrue(isTargetAlive);
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // Check successful accusation of jailed prophet
         // User3 accuses user4 (prophet 3) of blasphemy
@@ -599,6 +611,8 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         // User1 accuses user3 (prophet 2) of blasphemy
         vm.startPrank(user1);
         gameplayEngine.accuseOfBlasphemy(2);
@@ -624,6 +638,8 @@ contract GameplayEngineTests is Test {
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         vm.stopPrank();
         ///////////// End fullfillRequest Sequence /////////////
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User3 performs miracle to get out of jail
         vm.startPrank(user3);
@@ -669,6 +685,8 @@ contract GameplayEngineTests is Test {
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User1 accuses user4 (prophet 3) of blasphemy
         vm.startPrank(user1);
@@ -745,6 +763,8 @@ contract GameplayEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         // prophet 0 performs miracle
         vm.startPrank(user1);
         gameplayEngine.performMiracle();
@@ -767,6 +787,8 @@ contract GameplayEngineTests is Test {
         vm.startPrank(address(gameplayEngine));
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // Try to perform action as wrong player
         vm.startPrank(user2);

@@ -477,6 +477,7 @@ contract PhenomenonTicketEngineTests is Test {
         ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
         phenomenonTicketEngine.getReligion(0, 1);
         vm.stopPrank();
+        vm.warp(block.timestamp + 1 minutes);
         // Prophet0 attempts miracle
         vm.startPrank(user1);
         gameplayEngine.performMiracle();
@@ -509,6 +510,8 @@ contract PhenomenonTicketEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         //User5 buys tickets of prophet 0
         vm.startPrank(user5);
         totalTokensDeposited += phenomenonTicketEngine.getPrice(0, 3);
@@ -536,6 +539,8 @@ contract PhenomenonTicketEngineTests is Test {
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         vm.stopPrank();
         ///////////// End fullfillRequest Sequence /////////////
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User4 (prophet 3) fails a miracle
         vm.startPrank(user4);
@@ -575,6 +580,8 @@ contract PhenomenonTicketEngineTests is Test {
         phenomenon.setProphetTurn(0);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
+
         //User5 buys tickets of prophet 2
         vm.startPrank(user5);
         ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
@@ -601,6 +608,8 @@ contract PhenomenonTicketEngineTests is Test {
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         vm.stopPrank();
         ///////////// End fullfillRequest Sequence /////////////
+
+        vm.warp(block.timestamp + phenomenon.s_minInterval() + 1);
 
         // User4 (prophet 3) fails a miracle
         vm.startPrank(user4);

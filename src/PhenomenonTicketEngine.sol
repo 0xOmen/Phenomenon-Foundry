@@ -19,6 +19,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     error TicketEng__AddressIsEliminated();
     error TicketEng__ProphetIsDead();
     error TicketEng__NotEnoughTicketsOwned();
+    error TicketEng__TicketSalesDisabled();
 
     struct ProphetData {
         address playerAddress;
@@ -32,6 +33,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     /// @dev This number is used to multiply the ticket cost allowing us to scale the ticket cost up or down.
     uint256 s_ticketMultiplier;
     address private owner;
+    bool private s_ticketSalesEnabled;
 
     event religionLost(
         uint256 indexed _target, uint256 indexed numTicketsSold, uint256 indexed totalPrice, address sender
@@ -40,6 +42,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         uint256 indexed _target, uint256 indexed numTicketsBought, uint256 indexed totalPrice, address sender
     );
     event ticketsClaimed(address indexed player, uint256 indexed tokensSent, uint256 indexed gameNumber);
+    event ticketSalesEnabled(bool _ticketSalesEnabled);
 
     constructor(
         address gameContractAddress,
@@ -48,6 +51,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         owner = msg.sender;
         i_gameContract = Phenomenon(gameContractAddress);
         s_ticketMultiplier = ticketMultiplier;
+        s_ticketSalesEnabled = true;
     }
 
     modifier onlyOwner() {
@@ -61,6 +65,11 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     function setTicketMultiplier(uint256 _ticketMultiplier) external onlyOwner {
         s_ticketMultiplier = _ticketMultiplier;
+    }
+
+    function setTicketSalesEnabled(bool _ticketSalesEnabled) external onlyOwner {
+        s_ticketSalesEnabled = _ticketSalesEnabled;
+        emit ticketSalesEnabled(_ticketSalesEnabled);
     }
 
     /**
@@ -174,10 +183,13 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     /**
      * @notice This function allows a player to sell their tickets.
      * @dev This function can only be called if the game is in progress.
-     * @dev This function can only be called by a prophet.
+     * @dev This function can only be called by a non-prophet.
      * @param _ticketsToSell The number of tickets to sell.
      */
     function loseReligion(uint256 _ticketsToSell) public nonReentrant {
+        if (!s_ticketSalesEnabled) {
+            revert TicketEng__TicketSalesDisabled();
+        }
         uint256 gameStatus = uint256(i_gameContract.gameStatus());
         if (gameStatus != 1) {
             revert TicketEng__NotInProgress();
@@ -271,5 +283,9 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     function getProphetData(uint256 prophetNum) public view returns (address, bool, bool, uint256) {
         return i_gameContract.getProphetData(prophetNum);
+    }
+
+    function isTicketSalesEnabled() public view returns (bool) {
+        return s_ticketSalesEnabled;
     }
 }
