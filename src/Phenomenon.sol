@@ -3,6 +3,7 @@
 pragma solidity ^0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title Phenomenon
  * @author 0x-Omen.eth
@@ -310,7 +311,7 @@ contract Phenomenon {
         highPriestsByProphet.push(1);
 
         s_tokensDepositedThisGame += s_entranceFee;
-        IERC20(GAME_TOKEN).transferFrom(_prophet, address(this), s_entranceFee);
+        SafeERC20.safeTransferFrom(IERC20(GAME_TOKEN), _prophet, address(this), s_entranceFee);
     }
 
     /**
@@ -445,12 +446,12 @@ contract Phenomenon {
 
     // non-reentrant?
     function depositGameTokens(address from, uint256 amount) external onlyContract(s_ticketEngine) {
-        IERC20(GAME_TOKEN).transferFrom(from, address(this), amount);
+        SafeERC20.safeTransferFrom(IERC20(GAME_TOKEN), from, address(this), amount);
     }
 
     // non-reentrant?
     function returnGameTokens(address to, uint256 amount) external onlyContract(s_ticketEngine) {
-        IERC20(GAME_TOKEN).transfer(to, amount);
+        SafeERC20.safeTransfer(IERC20(GAME_TOKEN), to, amount);
     }
 
     function getOwnerTokenBalance() public view returns (uint256) {
@@ -462,13 +463,13 @@ contract Phenomenon {
             revert Game__NotEnoughTicketsOwned();
         }
         s_ownerTokenBalance -= _amount;
-        IERC20(GAME_TOKEN).transfer(_destination, _amount);
+        SafeERC20.safeTransfer(IERC20(GAME_TOKEN), _destination, _amount);
     }
 
     // This can be abused and should either be removed or revokable
     function ownerTokenTransfer(uint256 _amount, address _token, address _destination) public onlyOwner {
         if (ownerCanTransferAnyToken) {
-            IERC20(_token).transfer(_destination, _amount);
+            SafeERC20.safeTransfer(IERC20(_token), _destination, _amount);
         }
     }
 

@@ -1,0 +1,8 @@
+{
+  "filter_paths": "lib|test",
+  "solc_remaps": [
+    "@../../lib/chainlink/contracts/=lib/chainlink/contracts/",
+    "@chainlink/contracts/=lib/chainlink/contracts/",
+    "@openzeppelin/contracts=lib/openzeppelin-contracts/contracts"
+  ]
+}
