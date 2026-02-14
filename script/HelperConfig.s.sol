@@ -30,7 +30,7 @@ contract HelperConfig is Script {
         return NetworkConfig({
             chainlinkFunctionsRouter: 0xf9B8fc078197181C841c296C876945aaa425B278,
             chainlinkFunctionsDONID: 0x66756e2d626173652d7365706f6c69612d310000000000000000000000000000,
-            gameToken: 0xbAA34eb15E2733E2AFE8826251f029AcE353F405, // custon USDC token clone
+            gameToken: 0xA18A39F7f5Fa1A6d4aD6B67f6d5578D4002E2f98, // fDEGEN token
             subscriptionId: 313,
             deployerKey: 0
         });

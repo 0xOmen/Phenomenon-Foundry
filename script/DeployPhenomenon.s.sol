@@ -10,10 +10,10 @@ import {PhenomenonTicketEngine} from "../src/PhenomenonTicketEngine.sol";
 contract DeployPhenomenon is Script {
     uint256 maxInterval = 180;
     uint256 minInterval = 25;
-    uint256 entranceFee = 500000; // $0.50 for USDC
+    uint256 entranceFee = 1 ether; // 1.00 fDEGEN
     uint256 protocolFee = 500;
     uint16 numProphets = 4;
-    uint256 ticketMultiplier = 100000;
+    uint256 ticketMultiplier = 1 ether; // 10^6 for USDC and 10^18 for fDEGEN
     // forgefmt: disable-start
     string source = 'let response = "";'
         'let decryptor = 7983442720963060024057948886542171092952310290025484363884501439;'
