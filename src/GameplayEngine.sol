@@ -328,8 +328,6 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         s_lastFunctionResponse = response;
         s_lastFunctionError = err;
 
-        i_gameContract.changeGameStatus(1);
-
         //logic to change state of contract
         if (response.length == 1) {
             uint256 _currentProphetTurn = i_gameContract.getCurrentProphetTurn();
@@ -402,6 +400,12 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                 } else {}
             }
             emit gameStarted(i_gameContract.s_gameNumber());
+        }
+
+        // Set game to IN_PROGRESS only after all state updates are complete (CEI)
+        // Skip if turnManager ended the game (s_prophetsRemaining == 1)
+        if (uint256(i_gameContract.gameStatus()) != 4) {
+            i_gameContract.changeGameStatus(1);
         }
     }
 
