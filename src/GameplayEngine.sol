@@ -5,7 +5,9 @@ pragma solidity ^0.8.19;
 import {Phenomenon} from "./Phenomenon.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {FunctionsRequest} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
+import {
+    FunctionsRequest
+} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 import {FunctionsClient} from "@../../lib/chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 
@@ -20,6 +22,7 @@ import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/acc
 contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     using FunctionsRequest for FunctionsRequest.Request;
 
+    error GameEng__CannotBeZeroAddress();
     error GameEng__NotOpen();
     error GameEng__Full();
     error GameEng__AlreadyRegistered();
@@ -67,6 +70,9 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         FunctionsClient(_router)
         ConfirmedOwner(msg.sender)
     {
+        if (_gameContract == address(0) || _router == address(0)) {
+            revert GameEng__CannotBeZeroAddress();
+        }
         source = _source;
         subscriptionId = _subscriptionId;
         router = _router;
@@ -135,6 +141,10 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     /**
      * @notice This function starts the game.
      * @dev This function can only be called by enterGame() when the game fills.
+     * @dev This function sets the game status to IN_PROGRESS.
+     * @dev This function sets the randomness seed.
+     * @dev This function semi-randomly selects which prophet goes first (does not need strong randomization).
+     * @dev This function requests computation from Chainlink Function.
      * @param numberOfProphets The maximum number of prophets that can enter the game.
      */
     function startGame(uint256 numberOfProphets) internal {
@@ -142,7 +152,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         if (gameStatus != 0) {
             revert Game__NotOpen();
         }
-        
+
         if (prophetsRegistered != numberOfProphets) {
             revert GameEng__ProphetNumberError();
         }
@@ -261,7 +271,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     function setArguments(uint256 _action) internal {
         delete args;
         uint256 currentProphetTurn = i_gameContract.getCurrentProphetTurn();
-        args.push(Strings.toString(i_gameContract.getRandomnessSeed())); //roleVRFSeed
+        args.push(Strings.toString(i_gameContract.getRandomnessSeed())); //sets each games chosen one
         args.push(Strings.toString(i_gameContract.s_numberOfProphets())); //Number_of_Prophets
         args.push(Strings.toString(_action)); //_action
         args.push(Strings.toString(currentProphetTurn)); //currentProphetTurn

@@ -24,6 +24,7 @@ contract Phenomenon {
     error Game__OnlyOwner();
     error Game__OnlyController();
     error Game__ProtocolFeeTooHigh();
+    error Game__CannotBeZeroAddress();
     ///////////////////////////// Types ///////////////////////////////////
 
     enum GameState {
@@ -55,7 +56,7 @@ contract Phenomenon {
 
     /// @notice The number of prophets/players needed to start the game
     uint16 public s_numberOfProphets;
-    address private GAME_TOKEN;
+    address immutable GAME_TOKEN;
 
     /// @notice The current game number
     /// @dev This is incremented every time a game ends in reset()
@@ -136,6 +137,9 @@ contract Phenomenon {
         uint16 _numProphets,
         address _gameToken //0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed $DEGEN
     ) {
+        if (_gameToken == address(0)) {
+            revert Game__CannotBeZeroAddress();
+        }
         owner = msg.sender;
         s_maxInterval = _maxInterval;
         s_minInterval = _minInterval;
@@ -159,10 +163,16 @@ contract Phenomenon {
     }
 
     function changeGameplayEngine(address newGameplayEngine) public onlyOwner {
+        if (newGameplayEngine == address(0)) {
+            revert Game__CannotBeZeroAddress();
+        }
         s_gameplayEngine = newGameplayEngine;
     }
 
     function changeTicketEngine(address newTicketEngine) public onlyOwner {
+        if (newTicketEngine == address(0)) {
+            revert Game__CannotBeZeroAddress();
+        }
         s_ticketEngine = newTicketEngine;
     }
 
@@ -172,10 +182,6 @@ contract Phenomenon {
 
     function changeEntryFee(uint256 newFee) public onlyOwner {
         s_entranceFee = newFee;
-    }
-
-    function changeGameToken(address _gameToken) public onlyOwner {
-        GAME_TOKEN = _gameToken;
     }
 
     function setMaxInterval(uint256 _newMaxInterval) public onlyOwner {
@@ -285,7 +291,7 @@ contract Phenomenon {
     ////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * @notice This functions registers an address to play as a prophet.
-     * @dev This function can only be called by the GameplayEngine contract.
+     * @dev This function can only be called by the GameplayEngine contract which validates the sender/from address.
      * @dev This function should only be called if the gameState is OPEN.
      * @dev This function can only be called if there are prophets still neded to start.
      * @param _prophet The address of the prophet to register.
@@ -445,6 +451,13 @@ contract Phenomenon {
     }
 
     // non-reentrant?
+    /**
+     * @notice Allows TicketEngine to deposit game tokens into the contract.
+     * @dev This function can only be called by the TicketEngine contract.
+     * @dev TicketEngine contract verifies the sender/from address.
+     * @param from The address of the sender.
+     * @param amount The amount of tokens to deposit.
+     */
     function depositGameTokens(address from, uint256 amount) external onlyContract(s_ticketEngine) {
         SafeERC20.safeTransferFrom(IERC20(GAME_TOKEN), from, address(this), amount);
     }

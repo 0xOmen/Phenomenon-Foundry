@@ -20,6 +20,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     error TicketEng__ProphetIsDead();
     error TicketEng__NotEnoughTicketsOwned();
     error TicketEng__TicketSalesDisabled();
+    error TicketEng__ProphetAllegianceChangeDisabled();
 
     struct ProphetData {
         address playerAddress;
@@ -33,6 +34,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     /// @dev This number is used to multiply the ticket cost allowing us to scale the ticket cost up or down.
     uint256 s_ticketMultiplier;
     address private owner;
+    bool private s_prophetAllegianceChangeEnabled;
     bool private s_ticketSalesEnabled;
 
     event religionLost(
@@ -51,6 +53,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         owner = msg.sender;
         i_gameContract = Phenomenon(gameContractAddress);
         s_ticketMultiplier = ticketMultiplier;
+        s_prophetAllegianceChangeEnabled = false;
         s_ticketSalesEnabled = true;
     }
 
@@ -70,6 +73,10 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     function setTicketSalesEnabled(bool _ticketSalesEnabled) external onlyOwner {
         s_ticketSalesEnabled = _ticketSalesEnabled;
         emit ticketSalesEnabled(_ticketSalesEnabled);
+    }
+
+    function setProphetAllegianceChangeEnabled(bool _prophetAllegianceChangeEnabled) external onlyOwner {
+        s_prophetAllegianceChangeEnabled = _prophetAllegianceChangeEnabled;
     }
 
     /**
@@ -96,6 +103,10 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
                 || i_gameContract.s_prophetsRemaining() <= 2
         ) {
             revert TicketEng__NotAllowed();
+        }
+        // If the prophet is alive and allegiance change is disabled for living prophets, revert
+        if (senderProphetAlive && !s_prophetAllegianceChangeEnabled) {
+            revert TicketEng__ProphetAllegianceChangeDisabled();
         }
         uint256 senderAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
         bool currentLeaderAlive;

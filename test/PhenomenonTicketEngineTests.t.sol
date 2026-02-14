@@ -42,6 +42,7 @@ contract PhenomenonTicketEngineTests is Test {
     event ticketsClaimed(address indexed player, uint256 indexed tokensSent, uint256 indexed gameNumber);
     event gameEnded(uint256 indexed gameNumber, uint256 tokensPerTicket, uint256 winner);
     event gameReset(uint256 indexed gameNumber);
+    event ticketSalesEnabled(bool _ticketSalesEnabled);
 
     function setUp() public {
         DeployPhenomenon deployer = new DeployPhenomenon();
@@ -101,6 +102,74 @@ contract PhenomenonTicketEngineTests is Test {
         vm.expectRevert();
         phenomenonTicketEngine.setTicketMultiplier(2000);
         vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                 PROPHET ALLEGIANCE CHANGE ENABLED TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function testOwnerCanSetProphetAllegianceChangeEnabled() public {
+        vm.startPrank(owner);
+        phenomenonTicketEngine.setProphetAllegianceChangeEnabled(true);
+        vm.stopPrank();
+        // Verify by successfully changing allegiance as prophet (tested in testProphetCanChangeAllegiance)
+    }
+
+    function testNonOwnerCannotSetProphetAllegianceChangeEnabled() public {
+        vm.startPrank(user1);
+        vm.expectRevert();
+        phenomenonTicketEngine.setProphetAllegianceChangeEnabled(true);
+        vm.stopPrank();
+    }
+
+    function testProphetCannotChangeAllegianceWhenDisabled() public {
+        setupGameWithFourProphets();
+        // s_prophetAllegianceChangeEnabled defaults to false
+        vm.startPrank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__ProphetAllegianceChangeDisabled.selector)
+        );
+        phenomenonTicketEngine.highPriest(0, 2);
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    TICKET SALES ENABLED TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function testOwnerCanSetTicketSalesEnabled() public {
+        assertTrue(phenomenonTicketEngine.isTicketSalesEnabled());
+        vm.startPrank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit ticketSalesEnabled(false);
+        phenomenonTicketEngine.setTicketSalesEnabled(false);
+        vm.stopPrank();
+        assertFalse(phenomenonTicketEngine.isTicketSalesEnabled());
+    }
+
+    function testNonOwnerCannotSetTicketSalesEnabled() public {
+        vm.startPrank(user1);
+        vm.expectRevert();
+        phenomenonTicketEngine.setTicketSalesEnabled(false);
+        vm.stopPrank();
+    }
+
+    function testCannotSellTicketsWhenSalesDisabled() public {
+        setupGameWithFourProphets();
+        vm.startPrank(owner);
+        phenomenonTicketEngine.setTicketSalesEnabled(false);
+        vm.stopPrank();
+
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__TicketSalesDisabled.selector));
+        phenomenonTicketEngine.loseReligion(1);
+        vm.stopPrank();
+    }
+
+    function testIsTicketSalesEnabledReturnsCorrectValue() public view {
+        assertTrue(phenomenonTicketEngine.isTicketSalesEnabled());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -167,6 +236,9 @@ contract PhenomenonTicketEngineTests is Test {
     function testProphetCanChangeAllegiance() public {
         setupGameWithFourProphets();
 
+        vm.prank(owner);
+        phenomenonTicketEngine.setProphetAllegianceChangeEnabled(true);
+
         // Prophet 0 (user1) should be able to change allegiance to prophet 2
         vm.startPrank(user1);
         phenomenonTicketEngine.highPriest(0, 2);
@@ -206,6 +278,9 @@ contract PhenomenonTicketEngineTests is Test {
 
     function testHighPriestCannotChangeAllegianceIfFollwingDeadProphet() public {
         setupGameWithFourProphets();
+
+        vm.prank(owner);
+        phenomenonTicketEngine.setProphetAllegianceChangeEnabled(true);
 
         // Set Prophet 0 allegiance to Prophet 3
         vm.startPrank(user1);

@@ -103,7 +103,7 @@ contract PhenomenonTest is Test {
         vm.stopPrank();
     }
 
-    function testOwnerCanChangeGameToken() public {
+    /*function testOwnerCanChangeGameToken() public {
         vm.startPrank(owner);
         phenomenon.changeGameToken(newGameToken);
         vm.stopPrank();
@@ -116,7 +116,7 @@ contract PhenomenonTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Phenomenon.Game__OnlyOwner.selector));
         phenomenon.changeGameToken(newGameToken);
         vm.stopPrank();
-    }
+    }*/
 
     function testOwnerCanChangeEntryFee() public {
         uint256 newFee = 20 ether;
