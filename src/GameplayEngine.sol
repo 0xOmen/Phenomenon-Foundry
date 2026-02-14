@@ -64,6 +64,9 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         bool indexed isSuccess, bool targetIsAlive, uint256 indexed currentProphetTurn, uint256 indexed _target
     );
     event Response(bytes32 indexed requestId, string character, bytes response, bytes err);
+    event allowListEnabledSet(bool indexed allowListEnabled);
+    event forceMiracleTriggered(address indexed sender);
+    event chainlinkRequestSent(uint256 indexed action);
 
     //////////////////////// Funtions ////////////////////////////
     constructor(address _gameContract, string memory _source, uint64 _subscriptionId, address _router, bytes32 _donId)
@@ -86,6 +89,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     }
 
     function setAllowListEnabled(bool _allowListEnabled) public onlyOwner {
+        emit allowListEnabledSet(_allowListEnabled);
         s_allowListEnabled = _allowListEnabled;
     }
 
@@ -196,6 +200,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         if (uint256(i_gameContract.gameStatus()) != 1) {
             revert Game__NotInProgress();
         }
+        emit forceMiracleTriggered(msg.sender);
         sendRequest(0);
     }
 
@@ -305,6 +310,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             req.addDONHostedSecrets(donHostedSecretsSlotID, donHostedSecretsVersion);
         }
 
+        emit chainlinkRequestSent(action);
         req.setArgs(args); // Set the arguments for the request
 
         // Send the request and store the request ID

@@ -109,10 +109,27 @@ contract Phenomenon {
     uint256[] public highPriestsByProphet;
 
     ////////////////////////// Events ////////////////////////////
+    event maxIntervalSet(uint256 indexed maxInterval);
+    event minIntervalSet(uint256 indexed minInterval);
+    event entranceFeeSet(uint256 indexed entranceFee);
+    event numberOfProphetsSet(uint16 indexed numberOfProphets);
+    event gameNumberSet(uint256 indexed gameNumber);
+    event gameStatusSet(GameState indexed gameStatus);
+    event tokensDepositedThisGameSet(uint256 indexed gameNumber, uint256 indexed tokensDepositedThisGame);
+    event ownerCanTransferAnyTokenSet(bool indexed ownerCanTransferAnyToken);
+    event totalTicketsSet(uint256 indexed gameNumber, uint256 indexed totalTickets);
     event gameEnded(uint256 indexed gameNumber, uint256 indexed tokensPerTicket, uint256 indexed currentProphetTurn);
     event gameReset(uint256 indexed newGameNumber);
     event currentTurn(uint256 indexed nextProphetTurn);
-
+    event gameplayEngineSet(address indexed gameplayEngine);
+    event ticketEngineSet(address indexed ticketEngine);
+    event randomnessSeedSet(uint256 indexed gameNumber, uint256 indexed randomnessSeed);
+    event ownerTokenBalanceSet(uint256 indexed ownerTokenBalance, uint256 indexed fee);
+    event tokensPerTicketSet(uint256 indexed gameNumber, uint256 indexed tokensPerTicket);
+    event prophetUpdated(
+        uint256 indexed gameNumber, address indexed prophet, bool indexed isAlive, bool isFree, uint256 args
+    );
+    event prophetRegistered(uint256 indexed gameNumber, address indexed prophet, uint256 indexed prophetNum);
     ////////////////////////// Modifiers ////////////////////////////
     modifier onlyOwner() {
         if (msg.sender != owner) {
@@ -142,17 +159,25 @@ contract Phenomenon {
         }
         owner = msg.sender;
         s_maxInterval = _maxInterval;
+        emit maxIntervalSet(_maxInterval);
         s_minInterval = _minInterval;
+        emit minIntervalSet(_minInterval);
         s_entranceFee = _entranceFee;
+        emit entranceFeeSet(_entranceFee);
         s_protocolFee = _protocolFee;
         s_numberOfProphets = _numProphets;
+        emit numberOfProphetsSet(_numProphets);
         s_gameNumber = 0;
+        emit gameNumberSet(0);
         gameStatus = GameState.OPEN;
+        emit gameStatusSet(GameState.OPEN);
         s_lastRoundTimestamp = block.timestamp;
 
         GAME_TOKEN = _gameToken;
         s_tokensDepositedThisGame = 0;
+        emit tokensDepositedThisGameSet(s_gameNumber, 0);
         ownerCanTransferAnyToken = true;
+        emit ownerCanTransferAnyTokenSet(true);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +191,7 @@ contract Phenomenon {
         if (newGameplayEngine == address(0)) {
             revert Game__CannotBeZeroAddress();
         }
+        emit gameplayEngineSet(newGameplayEngine);
         s_gameplayEngine = newGameplayEngine;
     }
 
@@ -173,22 +199,27 @@ contract Phenomenon {
         if (newTicketEngine == address(0)) {
             revert Game__CannotBeZeroAddress();
         }
+        emit ticketEngineSet(newTicketEngine);
         s_ticketEngine = newTicketEngine;
     }
 
     function ownerChangeGameState(GameState _status) public onlyOwner {
+        emit gameStatusSet(_status);
         gameStatus = _status;
     }
 
     function changeEntryFee(uint256 newFee) public onlyOwner {
+        emit entranceFeeSet(newFee);
         s_entranceFee = newFee;
     }
 
     function setMaxInterval(uint256 _newMaxInterval) public onlyOwner {
+        emit maxIntervalSet(_newMaxInterval);
         s_maxInterval = _newMaxInterval;
     }
 
     function setMinInterval(uint256 _newMinInterval) public onlyOwner {
+        emit minIntervalSet(_newMinInterval);
         s_minInterval = _newMinInterval;
     }
 
@@ -200,6 +231,7 @@ contract Phenomenon {
      * @dev This number is sent to Chainlink to determine the Chosen One in a way that does not reveal the player.
      */
     function setRandomnessSeed(uint256 randomnessSeed) public onlyContract(s_gameplayEngine) {
+        emit randomnessSeedSet(s_gameNumber, randomnessSeed);
         s_randomnessSeed = randomnessSeed;
     }
 
@@ -229,15 +261,21 @@ contract Phenomenon {
         }
 
         s_gameNumber++;
+        emit gameNumberSet(s_gameNumber);
         s_tokensDepositedThisGame = 0;
+        emit tokensDepositedThisGameSet(s_gameNumber, 0);
         delete prophets; //array of structs
+        emit gameStatusSet(GameState.OPEN);
         gameStatus = GameState.OPEN;
         s_prophetsRemaining = 0;
+
         s_numberOfProphets = _numberOfPlayers;
+        emit numberOfProphetsSet(_numberOfPlayers);
 
         delete acolytes; //array
         delete highPriestsByProphet; //array
         s_totalTickets = 0;
+        emit totalTicketsSet(s_gameNumber, s_totalTickets);
         emit gameReset(s_gameNumber);
     }
 
@@ -275,13 +313,18 @@ contract Phenomenon {
             if (winningPlayerCount != 0) {
                 uint256 fee = (s_tokensDepositedThisGame * s_protocolFee) / 10000;
                 s_ownerTokenBalance += fee;
+                emit ownerTokenBalanceSet(s_ownerTokenBalance, fee);
                 s_tokensDepositedThisGame -= fee;
                 tokensPerTicket[s_gameNumber] = s_tokensDepositedThisGame / winningPlayerCount;
+                emit tokensPerTicketSet(s_gameNumber, tokensPerTicket[s_gameNumber]);
             } else {
                 tokensPerTicket[s_gameNumber] = 0;
+                emit tokensPerTicketSet(s_gameNumber, 0);
                 s_ownerTokenBalance += s_tokensDepositedThisGame;
+                emit ownerTokenBalanceSet(s_ownerTokenBalance, s_tokensDepositedThisGame);
             }
             gameStatus = GameState.ENDED;
+            emit gameStatusSet(GameState.ENDED);
             emit gameEnded(s_gameNumber, tokensPerTicket[s_gameNumber], currentProphetTurn[s_gameNumber]);
         }
     }
@@ -305,6 +348,8 @@ contract Phenomenon {
         prophetList[s_gameNumber][_prophet] = true;
         s_prophetsRemaining++;
         uint256 prophetNum = prophets.length - 1;
+        emit prophetRegistered(s_gameNumber, _prophet, prophetNum);
+        emit prophetUpdated(s_gameNumber, _prophet, true, true, 0);
         // assign allegiance to self
         allegiance[s_gameNumber][_prophet] = prophetNum;
         // give Prophet one of his own tickets
@@ -336,10 +381,24 @@ contract Phenomenon {
     }
 
     function updateProphetLife(uint256 _prophetNum, bool _isAlive) public onlyContract(s_gameplayEngine) {
+        emit prophetUpdated(
+            s_gameNumber,
+            prophets[_prophetNum].playerAddress,
+            _isAlive,
+            prophets[_prophetNum].isFree,
+            prophets[_prophetNum].args
+        );
         prophets[_prophetNum].isAlive = _isAlive;
     }
 
     function updateProphetFreedom(uint256 _prophetNum, bool _isFree) public onlyContract(s_gameplayEngine) {
+        emit prophetUpdated(
+            s_gameNumber,
+            prophets[_prophetNum].playerAddress,
+            prophets[_prophetNum].isAlive,
+            _isFree,
+            prophets[_prophetNum].args
+        );
         prophets[_prophetNum].isFree = _isFree;
     }
 
@@ -348,6 +407,7 @@ contract Phenomenon {
     }
 
     function setProphetTurn(uint256 _prophetNum) public onlyContract(s_gameplayEngine) {
+        emit currentTurn(currentProphetTurn[s_gameNumber]);
         currentProphetTurn[s_gameNumber] = _prophetNum;
     }
 
@@ -356,6 +416,7 @@ contract Phenomenon {
     }
 
     function changeGameStatus(uint256 _status) public onlyContract(s_gameplayEngine) {
+        emit gameStatusSet(GameState(_status));
         gameStatus = GameState(_status);
     }
 
@@ -365,6 +426,13 @@ contract Phenomenon {
     }
 
     function updateProphetArgs(uint256 _prophetNum, uint256 _args) public onlyContract(s_gameplayEngine) {
+        emit prophetUpdated(
+            s_gameNumber,
+            prophets[_prophetNum].playerAddress,
+            prophets[_prophetNum].isAlive,
+            prophets[_prophetNum].isFree,
+            _args
+        );
         prophets[_prophetNum].args = _args;
     }
 
@@ -439,10 +507,12 @@ contract Phenomenon {
     }
 
     function increaseTokenDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
+        emit tokensDepositedThisGameSet(s_gameNumber, s_tokensDepositedThisGame + amount);
         s_tokensDepositedThisGame += amount;
     }
 
     function decreaseTokensDepositedThisGame(uint256 amount) public onlyContract(s_ticketEngine) {
+        emit tokensDepositedThisGameSet(s_gameNumber, s_tokensDepositedThisGame - amount);
         s_tokensDepositedThisGame -= amount;
     }
 
