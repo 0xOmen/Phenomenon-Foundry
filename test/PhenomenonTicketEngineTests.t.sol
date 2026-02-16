@@ -788,6 +788,111 @@ contract PhenomenonTicketEngineTests is Test {
         vm.stopPrank();
     }
 
+    function testGetClaimableGameNumbersAndBatchClaim() public {
+        // Game 1: user5 buys for prophet 0, prophet 0 wins
+        setupGameWithFourProphets();
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(2, false);
+        phenomenon.updateProphetLife(3, false);
+        phenomenon.updateProphetsRemaining(0, 2);
+        phenomenon.turnManager();
+        vm.stopPrank();
+
+        uint256 game0Number = phenomenon.s_gameNumber(); // setupGameWithFourProphets does reset first, so first game is s_gameNumber
+
+        // Game 2: reset, user5 buys for prophet 0 again, prophet 0 wins
+        vm.startPrank(owner);
+        phenomenon.reset(4);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        gameplayEngine.enterGame(new bytes32[](0));
+        vm.stopPrank();
+        vm.startPrank(user2);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        gameplayEngine.enterGame(new bytes32[](0));
+        vm.stopPrank();
+        vm.startPrank(user3);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        gameplayEngine.enterGame(new bytes32[](0));
+        vm.stopPrank();
+        vm.startPrank(user4);
+        ERC20Mock(weth).approve(address(phenomenon), phenomenon.s_entranceFee());
+        gameplayEngine.enterGame(new bytes32[](0));
+        vm.stopPrank();
+
+        bytes32 mockRequestId = keccak256(abi.encode(block.timestamp, address(gameplayEngine), "testRequest"));
+        vm.store(address(gameplayEngine), bytes32(uint256(5)), mockRequestId);
+        vm.store(address(gameplayEngineHelper), bytes32(uint256(5)), mockRequestId);
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngineHelper));
+        bytes32 requestId = gameplayEngine.s_lastFunctionRequestId();
+        vm.prank(address(mockFunctionsRouterSimple));
+        gameplayEngineHelper.fulfillRequestHarness(requestId, mockFunctionsRouterSimple._fulfillRequest("1011"), "");
+        vm.prank(owner);
+        phenomenon.changeGameplayEngine(address(gameplayEngine));
+        vm.stopPrank();
+
+        vm.startPrank(user5);
+        ERC20Mock(weth).approve(address(phenomenon), 100000 ether);
+        phenomenonTicketEngine.getReligion(0, 1);
+        vm.stopPrank();
+
+        vm.startPrank(address(gameplayEngine));
+        phenomenon.updateProphetLife(2, false);
+        phenomenon.updateProphetLife(3, false);
+        phenomenon.updateProphetsRemaining(0, 2);
+        phenomenon.turnManager();
+        vm.stopPrank();
+
+        uint256 game1Number = phenomenon.s_gameNumber(); // second game just ended
+
+        // Reset so game 2 becomes claimable (claimable = gameNumber < currentGameNumber)
+        vm.prank(owner);
+        phenomenon.reset(4);
+
+        // Verify getClaimableGameNumbers returns both games
+        uint256[] memory claimable = phenomenonTicketEngine.getClaimableGameNumbers(user5);
+        assertEq(claimable.length, 2);
+        assertEq(claimable[0], game0Number);
+        assertEq(claimable[1], game1Number);
+
+        uint256 user5BalanceBefore = ERC20Mock(weth).balanceOf(user5);
+        uint256 expectedFromGame0 = phenomenon.tokensPerTicket(game0Number) * 1;
+        uint256 expectedFromGame1 = phenomenon.tokensPerTicket(game1Number) * 1;
+
+        // Batch claim both games
+        uint256[] memory gamesToClaim = new uint256[](2);
+        gamesToClaim[0] = game0Number;
+        gamesToClaim[1] = game1Number;
+        vm.prank(user5);
+        phenomenonTicketEngine.claimTicketsForMultipleGames(gamesToClaim, user5);
+
+        assertEq(ERC20Mock(weth).balanceOf(user5), user5BalanceBefore + expectedFromGame0 + expectedFromGame1);
+
+        // Verify no more claimable games
+        claimable = phenomenonTicketEngine.getClaimableGameNumbers(user5);
+        assertEq(claimable.length, 0);
+    }
+
+    function testClaimTicketsForMultipleGamesRevertsOnEmptyArray() public {
+        setupGameWithFourProphets();
+        uint256[] memory empty = new uint256[](0);
+        vm.expectRevert(abi.encodeWithSelector(PhenomenonTicketEngine.TicketEng__EmptyGameNumbers.selector));
+        phenomenonTicketEngine.claimTicketsForMultipleGames(empty, user5);
+    }
+
+    function testGetClaimableGameNumbersReturnsEmptyWhenNoClaimable() public view {
+        uint256[] memory claimable = phenomenonTicketEngine.getClaimableGameNumbers(user5);
+        assertEq(claimable.length, 0);
+    }
+
     function testCannotClaimTicketsIfNotWinner() public {
         setupGameWithFourProphets();
 

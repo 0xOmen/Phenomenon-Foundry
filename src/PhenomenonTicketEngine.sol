@@ -21,6 +21,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     error TicketEng__NotEnoughTicketsOwned();
     error TicketEng__TicketSalesDisabled();
     error TicketEng__ProphetAllegianceChangeDisabled();
+    error TicketEng__EmptyGameNumbers();
 
     struct ProphetData {
         address playerAddress;
@@ -272,6 +273,86 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         emit ticketsClaimed(_player, tokensToSend, _gameNumber);
 
         i_gameContract.returnGameTokens(_player, tokensToSend);
+    }
+
+    /**
+     * @notice Returns game numbers where the player has unclaimed winning tickets.
+     * @dev Call this off-chain or from a frontend to get the array for claimTicketsForMultipleGames.
+     * @param _player The address to check for claimable games.
+     * @return Array of game numbers the player can claim from.
+     */
+    function getClaimableGameNumbers(address _player) public view returns (uint256[] memory) {
+        uint256 currentGameNumber = i_gameContract.s_gameNumber();
+        if (currentGameNumber == 0) return new uint256[](0);
+
+        // First pass: count claimable games
+        uint256 claimableCount = 0;
+        for (uint256 g = 0; g < currentGameNumber; g++) {
+            if (_isGameClaimableForPlayer(g, _player)) {
+                claimableCount++;
+            }
+        }
+
+        // Second pass: fill array
+        uint256[] memory claimable = new uint256[](claimableCount);
+        uint256 idx = 0;
+        for (uint256 g = 0; idx < claimableCount; g++) {
+            if (_isGameClaimableForPlayer(g, _player)) {
+                claimable[idx] = g;
+                idx++;
+            }
+        }
+        return claimable;
+    }
+
+    /**
+     * @notice Claims winning tickets from multiple games in one transaction.
+     * @dev Use getClaimableGameNumbers to get the array to pass. Reverts if any game is invalid.
+     * @param _gameNumbers Array of game numbers to claim from.
+     * @param _player The address to claim for.
+     */
+    function claimTicketsForMultipleGames(uint256[] calldata _gameNumbers, address _player) public nonReentrant {
+        if (_gameNumbers.length == 0) {
+            revert TicketEng__EmptyGameNumbers();
+        }
+
+        uint256 currentGameNumber = i_gameContract.s_gameNumber();
+        uint256 totalTokensToSend = 0;
+
+        for (uint256 i = 0; i < _gameNumbers.length; i++) {
+            uint256 _gameNumber = _gameNumbers[i];
+            if (_gameNumber >= currentGameNumber) {
+                revert TicketEng__NotAllowed();
+            }
+            if (i_gameContract.allegiance(_gameNumber, _player) != i_gameContract.currentProphetTurn(_gameNumber)) {
+                revert TicketEng__AddressIsEliminated();
+            }
+            uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, _player);
+            if (startingUserTickets == 0) {
+                revert TicketEng__NotEnoughTicketsOwned();
+            }
+
+            uint256 tokensToSend = startingUserTickets * i_gameContract.tokensPerTicket(_gameNumber);
+            totalTokensToSend += tokensToSend;
+
+            i_gameContract.burnWinningTicketsByGame(_gameNumber, _player, startingUserTickets);
+            emit ticketsClaimed(_player, tokensToSend, _gameNumber);
+        }
+
+        i_gameContract.returnGameTokens(_player, totalTokensToSend);
+    }
+
+    /**
+     * @notice Internal helper to check if a player has claimable winning tickets for a game.
+     */
+    function _isGameClaimableForPlayer(uint256 _gameNumber, address _player) internal view returns (bool) {
+        if (i_gameContract.allegiance(_gameNumber, _player) != i_gameContract.currentProphetTurn(_gameNumber)) {
+            return false;
+        }
+        if (i_gameContract.ticketsToValhalla(_gameNumber, _player) == 0) {
+            return false;
+        }
+        return i_gameContract.ticketsToValhalla(_gameNumber, _player) > 0;
     }
 
     /**
