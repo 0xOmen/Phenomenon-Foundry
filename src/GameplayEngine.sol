@@ -18,6 +18,16 @@ import {ConfirmedOwner} from "@../../lib/chainlink/contracts/src/v0.8/shared/acc
  * @notice This contract handles gameplay logic.
  * @dev This contract must be whitelisted on the Game contract to use the game
  * contract's Functions.
+ *
+ * ## Production vs Testing Configuration
+ * - Production: startGame is `private`; line 317 _sendRequest is uncommented (calls Chainlink Functions Router).
+ * - Testing: startGame is `internal`; line 317 _sendRequest is commented out to allow simplified testing
+ *   with GameplayEngineHelper/mocks that don't hit the real Chainlink Router.
+ *
+ * ## Gas Limit (Base Sepolia / Base Mainnet)
+ * Chainlink Functions subscription default tier allows max 300_000 callback gas. The constructor sets
+ * gasLimit = 750_000 which exceeds this and will revert on sendRequest. After deployment, call
+ * changeGasLimit(300000) to fix. See: https://docs.chain.link/chainlink-functions/supported-networks
  */
 contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     using FunctionsRequest for FunctionsRequest.Request;
@@ -51,6 +61,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     uint64 subscriptionId;
     address router; //Check using correct chain for router address
     string source;
+    /// @dev Default 750000 exceeds Chainlink subscription tier on Base Sepolia/Mainnet. Call changeGasLimit(300000) after deploy.
     uint32 gasLimit = 750000;
     // Chainlink DON ID for Base Sepolia
     bytes32 donID;
@@ -97,6 +108,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         s_allowListRoot = _allowListRoot;
     }
 
+    /// @notice Set callback gas limit for Chainlink Functions requests. Must be ≤300000 for Base Sepolia/Mainnet default subscription tier.
     function changeGasLimit(uint32 _gasLimit) public onlyOwner {
         gasLimit = _gasLimit;
     }
@@ -149,6 +161,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
      * @dev This function sets the randomness seed.
      * @dev This function semi-randomly selects which prophet goes first (does not need strong randomization).
      * @dev This function requests computation from Chainlink Function.
+     * @dev Production: use `private`. Testing: use `internal` so GameplayEngineHelper can override/call for mocks.
      * @param numberOfProphets The maximum number of prophets that can enter the game.
      */
     function startGame(uint256 numberOfProphets) internal {
@@ -314,6 +327,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
         req.setArgs(args); // Set the arguments for the request
 
         // Send the request and store the request ID
+        // Production: uncomment below. Testing: keep commented to use GameplayEngineHelper fulfillRequestHarness.
         //s_lastFunctionRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, gasLimit, donID);
 
         return s_lastFunctionRequestId;

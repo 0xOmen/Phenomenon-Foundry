@@ -53,3 +53,18 @@ Tickets to Valhalla are bought and sold on a bonding curve for each Prophet. The
 ## Ending and Reseting Game
 
 When only one prophet remains, the winners can claim their share of the tokens in the pot. After everyone has claimed their tokens, reset the game with the desired number of players for the next round. Must wait 6 minutes to reset game.
+
+---
+
+## Developer Notes – GameplayEngine (Chainlink Functions)
+
+### Production vs Testing
+
+- **Production:** `startGame` is `private`; line 317 `_sendRequest` is **uncommented** (calls real Chainlink Functions Router).
+- **Testing:** `startGame` is `internal`; line 317 `_sendRequest` is **commented out** so tests can use GameplayEngineHelper/mocks without hitting the real router.
+
+### Gas Limit (Base Sepolia / Base Mainnet)
+
+Chainlink Functions subscriptions use a default tier that allows max **300,000** callback gas. The default `gasLimit` of 750,000 exceeds this and causes reverts on `sendRequest`.
+
+After deploying to Base Sepolia or Base Mainnet, call `changeGasLimit(300000)` on the GameplayEngine contract. Example: [Base Sepolia tx](https://sepolia.basescan.org/tx/0xd46938e2489ae1ab03a2d96a87bcf8b64c3ee62dc86bcaa9b818bf0721e6c234).
