@@ -407,7 +407,7 @@ contract Phenomenon {
     }
 
     function setProphetTurn(uint256 _prophetNum) public onlyContract(s_gameplayEngine) {
-        emit currentTurn(currentProphetTurn[s_gameNumber]);
+        emit currentTurn(_prophetNum);
         currentProphetTurn[s_gameNumber] = _prophetNum;
     }
 
