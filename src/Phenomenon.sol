@@ -356,6 +356,7 @@ contract Phenomenon {
         ticketsToValhalla[s_gameNumber][prophets[prophetNum].playerAddress] = 1;
         // Increment total tickets by 1
         s_totalTickets++;
+        emit totalTicketsSet(s_gameNumber, s_totalTickets);
         // This initializes acolytes[]
         // Push the number of acolytes/tickets sold into the prophet slot of the array
         acolytes.push(0);
