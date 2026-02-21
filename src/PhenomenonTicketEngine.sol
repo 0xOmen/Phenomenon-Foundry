@@ -125,7 +125,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
             revert TicketEng__NotInProgress();
         }
 
-        emit religionLost(_target, 1, 0, msg.sender);
+        emit religionLost(senderAllegiance, 1, 0, msg.sender);
         i_gameContract.decreaseHighPriest(senderAllegiance);
 
         emit gainReligion(_target, 1, 0, msg.sender);
