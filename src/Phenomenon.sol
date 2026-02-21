@@ -108,6 +108,9 @@ contract Phenomenon {
     /// @dev gets 'deleted' every game in reset()
     uint256[] public highPriestsByProphet;
 
+    /// @notice prophet address by game and prophet index; used for claim lookups after reset clears prophets array
+    mapping(uint256 => mapping(uint256 => address)) public prophetAddressByGame;
+
     ////////////////////////// Events ////////////////////////////
     event maxIntervalSet(uint256 indexed maxInterval);
     event minIntervalSet(uint256 indexed minInterval);
@@ -345,9 +348,10 @@ contract Phenomenon {
         newProphet.isAlive = true;
         newProphet.isFree = true;
         prophets.push(newProphet);
+        uint256 prophetNum = prophets.length - 1;
+        prophetAddressByGame[s_gameNumber][prophetNum] = _prophet;
         prophetList[s_gameNumber][_prophet] = true;
         s_prophetsRemaining++;
-        uint256 prophetNum = prophets.length - 1;
         emit prophetRegistered(s_gameNumber, _prophet, prophetNum);
         emit prophetUpdated(s_gameNumber, _prophet, true, true, 0);
         // assign allegiance to self
@@ -367,8 +371,18 @@ contract Phenomenon {
     }
 
     /**
+     * @notice Returns the prophet address for a given game and prophet index. Use when claiming from past games (prophets array is cleared on reset).
+     * @param _gameNumber The game number to look up.
+     * @param _prophetNum The prophet index in that game.
+     */
+    function getProphetAddressForGame(uint256 _gameNumber, uint256 _prophetNum) public view returns (address) {
+        return prophetAddressByGame[_gameNumber][_prophetNum];
+    }
+
+    /**
      * @notice This function returns the data of a prophet.
      * @dev This function is needed for the GameplayEngine and TicketEngine contracts.
+     * @dev For past games, use getProphetAddressForGame instead (prophets array is cleared on reset).
      * @param _prophetNum The number of the prophet to get data for.
      * @return The address of the prophet, whether they are alive, whether they are free, and their args.
      */
@@ -379,6 +393,15 @@ contract Phenomenon {
             prophets[_prophetNum].isFree,
             prophets[_prophetNum].args
         );
+    }
+
+    /**
+     * @notice This function returns if the prophet is alive.
+     * @param _prophetNum The prophet index in that game.
+     * @return The address of the prophet, whether they are alive, whether they are free, and their args.
+     */
+    function getProphetAlive(uint256 _prophetNum) public view returns (bool) {
+        return prophets[_prophetNum].isAlive;
     }
 
     function updateProphetLife(uint256 _prophetNum, bool _isAlive) public onlyContract(s_gameplayEngine) {
@@ -448,8 +471,19 @@ contract Phenomenon {
      * @return The ticket share of the prophet as percentage (e.g. 1/3 returns '33').
      */
     function getTicketShare(uint256 _playerNum) public view returns (uint256) {
-        if (s_totalTickets == 0) return 0;
-        else return ((acolytes[_playerNum] + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
+        if (s_totalTickets == 0) {
+            return 0;
+        } else if (highPriestsByProphet[_playerNum] > 0) {
+            uint256 followerCount = acolytes[_playerNum];
+            for (uint256 i = 0; i < prophets.length; i++) {
+                if (allegiance[s_gameNumber][prophets[i].playerAddress] == _playerNum && i != _playerNum) {
+                    followerCount += acolytes[i];
+                }
+            }
+            return ((followerCount + highPriestsByProphet[_playerNum]) * 100) / s_totalTickets;
+        } else {
+            return ((acolytes[_playerNum]) * 100) / s_totalTickets;
+        }
     }
 
     function increaseHighPriest(uint256 target) public onlyContract(s_ticketEngine) {
@@ -521,7 +555,6 @@ contract Phenomenon {
         s_ownerTokenBalance += amount;
     }
 
-    // non-reentrant?
     /**
      * @notice Allows TicketEngine to deposit game tokens into the contract.
      * @dev This function can only be called by the TicketEngine contract.
@@ -533,7 +566,6 @@ contract Phenomenon {
         SafeERC20.safeTransferFrom(IERC20(GAME_TOKEN), from, address(this), amount);
     }
 
-    // non-reentrant?
     function returnGameTokens(address to, uint256 amount) external onlyContract(s_ticketEngine) {
         SafeERC20.safeTransfer(IERC20(GAME_TOKEN), to, amount);
     }

@@ -92,7 +92,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         bool senderProphetAlive;
         uint256 senderProphetArgs;
         (senderProphetAddress, senderProphetAlive,, senderProphetArgs) = getProphetData(_senderProphetNum);
-        (, bool targetIsAlive,,) = getProphetData(_target);
+        bool targetIsAlive = i_gameContract.getProphetAlive(_target);
         uint256 gameNumber = i_gameContract.s_gameNumber();
         if (
             // Only a prophet can call this function
@@ -111,7 +111,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         }
         uint256 senderAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
         bool currentLeaderAlive;
-        (, currentLeaderAlive,,) = getProphetData(senderAllegiance);
+        currentLeaderAlive = i_gameContract.getProphetAlive(senderAllegiance);
         // Can't change allegiance if following an eliminated prophet
         if (currentLeaderAlive == false) {
             // Allegiance automatically set to self
@@ -154,7 +154,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         }
         // Can't buy tickets of dead or nonexistent prophets
         bool targetProphetAlive;
-        (, targetProphetAlive,,) = getProphetData(_prophetNum);
+        targetProphetAlive = i_gameContract.getProphetAlive(_prophetNum);
         if (targetProphetAlive == false || _prophetNum >= i_gameContract.s_numberOfProphets()) {
             revert TicketEng__ProphetIsDead();
         }
@@ -168,7 +168,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         uint256 senderTicketCount = i_gameContract.ticketsToValhalla(gameNumber, msg.sender);
         uint256 senderAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
         bool senderAllegianceAlive;
-        (, senderAllegianceAlive,,) = getProphetData(senderAllegiance);
+        senderAllegianceAlive = i_gameContract.getProphetAlive(senderAllegiance);
         if (senderAllegianceAlive == false && senderTicketCount != 0) {
             revert TicketEng__AddressIsEliminated();
         }
@@ -210,7 +210,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
         uint256 gameNumber = i_gameContract.s_gameNumber();
         uint256 currentAllegiance = i_gameContract.allegiance(gameNumber, msg.sender);
         bool targetProphetAlive;
-        (, targetProphetAlive,,) = getProphetData(currentAllegiance);
+        targetProphetAlive = i_gameContract.getProphetAlive(currentAllegiance);
         if (targetProphetAlive == false) {
             revert TicketEng__ProphetIsDead();
         }
@@ -249,6 +249,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
      * @notice This function allows a player to claim their tickets.
      * @dev This function can only be called if the game being claimed from has ended.
      * @dev This function can be called by any address to claim for any address.
+     * @dev Must be allegiant to winner or to a prophet that is allegiant to the winner.
      * @param _gameNumber The number of the game to claim tickets from.
      * @param _player The address to claim tickets for.
      */
@@ -258,8 +259,15 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
             revert TicketEng__NotAllowed();
         }
         // TurnManager sets currentProphetTurn to game winner, so use this to check if allegiance is to the winner
-        if (i_gameContract.allegiance(_gameNumber, _player) != i_gameContract.currentProphetTurn(_gameNumber)) {
-            revert TicketEng__AddressIsEliminated();
+        uint256 playerAllegiance = i_gameContract.allegiance(_gameNumber, _player);
+        uint256 gameWinner = i_gameContract.currentProphetTurn(_gameNumber);
+        address prophetAddress;
+        // If player is not allegiant to the winner, check if their allegiance is to a prophet that is allegiant to the winner
+        if (playerAllegiance != gameWinner) {
+            prophetAddress = i_gameContract.getProphetAddressForGame(_gameNumber, playerAllegiance);
+            if (prophetAddress == address(0) || i_gameContract.allegiance(_gameNumber, prophetAddress) != gameWinner) {
+                revert TicketEng__AddressIsEliminated();
+            }
         }
         uint256 startingUserTickets = i_gameContract.ticketsToValhalla(_gameNumber, _player);
         if (startingUserTickets == 0) {
