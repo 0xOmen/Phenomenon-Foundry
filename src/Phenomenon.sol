@@ -77,6 +77,7 @@ contract Phenomenon {
 
     ProphetData[] public prophets;
     GameState public gameStatus;
+    bool public pauseBeforeReset;
     mapping(uint256 => uint256) public currentProphetTurn;
 
     /// @notice tracks how many tickets there are in the game (acolytes + high priests)
@@ -175,6 +176,7 @@ contract Phenomenon {
         gameStatus = GameState.OPEN;
         emit gameStatusSet(GameState.OPEN);
         s_lastRoundTimestamp = block.timestamp;
+        pauseBeforeReset = false;
 
         GAME_TOKEN = _gameToken;
         s_tokensDepositedThisGame = 0;
@@ -226,6 +228,18 @@ contract Phenomenon {
         s_minInterval = _newMinInterval;
     }
 
+    function enablePauseBeforeReset() public onlyOwner {
+        pauseBeforeReset = true;
+    }
+
+    function disablePauseBeforeReset() public onlyOwner {
+        pauseBeforeReset = false;
+        if (gameStatus == GameState.PAUSED) {
+            gameStatus = GameState.ENDED;
+            emit gameStatusSet(GameState.ENDED);
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////
     //////////// GAME FUNCTIONS ////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,6 +260,7 @@ contract Phenomenon {
      * @notice This function resets the game.
      * @dev This function can be called by the owner at any time.
      * @dev This function can only be called by others if the game is not ENDED.
+     * @dev This function can only be called if the last round was more than 240 seconds ago.
      * @dev This function can only be called if the number of prophets is between 4 and 9.
      * @dev May need to disable changing the number of prophets in Production?
      * @param _numberOfPlayers The number of prophets/players needed to start the game
@@ -255,7 +270,7 @@ contract Phenomenon {
             if (gameStatus != GameState.ENDED) {
                 revert Game__NotInProgress();
             }
-            if (block.timestamp < s_lastRoundTimestamp + 30) {
+            if (block.timestamp < s_lastRoundTimestamp + 240) {
                 revert Game__NotAllowed();
             }
         }
@@ -329,6 +344,10 @@ contract Phenomenon {
             gameStatus = GameState.ENDED;
             emit gameStatusSet(GameState.ENDED);
             emit gameEnded(s_gameNumber, tokensPerTicket[s_gameNumber], currentProphetTurn[s_gameNumber]);
+            if (pauseBeforeReset) {
+                gameStatus = GameState.PAUSED;
+                emit gameStatusSet(GameState.PAUSED);
+            }
         }
     }
 
