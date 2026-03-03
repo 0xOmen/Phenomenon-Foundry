@@ -13,7 +13,8 @@ contract DeployPhenomenon is Script {
     uint256 entranceFee = 1 ether; // 1.00 fDEGEN
     uint256 protocolFee = 500;
     uint16 numProphets = 4;
-    uint256 ticketMultiplier = 1 ether; // 10^6 for USDC and 10^18 for fDEGEN
+    uint256 startingPrice = 1 ether; // p0: starting ticket price (1 DEGEN for fDEGEN; 10^6 for USDC)
+    uint256 growthCoefficient = 0.001 ether; // r: growth coefficient (~2.7x by ticket 1,000)
     // forgefmt: disable-start
     string source = 'let response = "";'
         'let decryptor = 7983442720963060024057948886542171092952310290025484363884501439;'
@@ -92,7 +93,7 @@ contract DeployPhenomenon is Script {
             address(phenomenon), source, subscriptionId, chainlinkFunctionsRouter, chainlinkFunctionsDONID
         );
         PhenomenonTicketEngine phenomenonTicketEngine =
-            new PhenomenonTicketEngine(address(phenomenon), ticketMultiplier);
+            new PhenomenonTicketEngine(address(phenomenon), startingPrice, growthCoefficient);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         phenomenon.changeTicketEngine(address(phenomenonTicketEngine));
         vm.stopBroadcast();

@@ -91,19 +91,6 @@ contract PhenomenonTicketEngineTests is Test {
         vm.stopPrank();
     }
 
-    function testOwnerCanSetTicketMultiplier() public {
-        vm.startPrank(owner);
-        phenomenonTicketEngine.setTicketMultiplier(2000);
-        vm.stopPrank();
-    }
-
-    function testNonOwnerCannotSetTicketMultiplier() public {
-        vm.startPrank(user1);
-        vm.expectRevert();
-        phenomenonTicketEngine.setTicketMultiplier(2000);
-        vm.stopPrank();
-    }
-
     /*//////////////////////////////////////////////////////////////
                  PROPHET ALLEGIANCE CHANGE ENABLED TESTS
     //////////////////////////////////////////////////////////////*/

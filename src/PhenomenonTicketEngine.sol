@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import {Phenomenon} from "./Phenomenon.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UD60x18, ud, exp} from "@prb/math/UD60x18.sol";
 
 /**
  * @title PhenomenonTicketEngine
@@ -32,11 +33,16 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     //////////////////////// State Variables ////////////////////////
 
     Phenomenon private immutable i_gameContract;
-    /// @dev This number is used to multiply the ticket cost allowing us to scale the ticket cost up or down.
-    uint256 public s_ticketMultiplier;
     address private owner;
     bool private s_prophetAllegianceChangeEnabled;
     bool private s_ticketSalesEnabled;
+
+    // Starting price: 1 DEGEN (scaled to 18 decimals)
+    uint256 private startingPrice = 1 ether;
+
+    // Growth coefficient r: 0.001 (scaled to 18 decimals)
+    // This results in a ~2.7x price increase by ticket 1,000
+    uint256 private growthCoefficient = 0.001 ether;
 
     event religionLost(
         uint256 indexed _target, uint256 indexed numTicketsSold, uint256 indexed totalPrice, address sender
@@ -49,11 +55,13 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     constructor(
         address gameContractAddress,
-        uint256 ticketMultiplier // used for decimals: USDC = 10^6, ETH = 10^18
+        uint256 p0, // starting ticket price with decimals: USDC = 10^6, ETH = 1 ether = 10^18
+        uint256 r // growth coefficient: 0.001 = 0.1% needs to be scaled to game token decimals
     ) {
         owner = msg.sender;
         i_gameContract = Phenomenon(gameContractAddress);
-        s_ticketMultiplier = ticketMultiplier;
+        startingPrice = p0;
+        growthCoefficient = r;
         s_prophetAllegianceChangeEnabled = false;
         s_ticketSalesEnabled = true;
     }
@@ -65,10 +73,6 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     function changeOwner(address newOwner) public onlyOwner {
         owner = newOwner;
-    }
-
-    function setTicketMultiplier(uint256 _ticketMultiplier) external onlyOwner {
-        s_ticketMultiplier = _ticketMultiplier;
     }
 
     function setTicketSalesEnabled(bool _ticketSalesEnabled) external onlyOwner {
@@ -366,19 +370,31 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
     /**
      * @notice This function calculates the price of tickets based on the supply and amount of tickets.
      * @dev This is the bonding curve that determines the cumulative ticket price for each prophet.
-     * @dev Bonding Curve: ticketPrice = 0.001*supply + 0.50
+     * @dev Bonding Curve: ticketPrice = m * s ^ r
+     * @dev where m is the starting price and r is the growth coefficient.
+     * @dev To get sale price, we need to calculate the total cost for n tickets starting at supply s-n.
      * @param supply The supply of tickets.
      * @param amount The amount of tickets to calculate the price for.
      * @return The total price for the tickets being exchanged.
      */
     function getPrice(uint256 supply, uint256 amount) public view returns (uint256) {
-        uint256 firstPrice = 500 * s_ticketMultiplier + supply; // First ticket price in wei
-        uint256 lastPrice = 500 * s_ticketMultiplier + (supply + amount - 1); // Last ticket price in wei
+        UD60x18 p0 = ud(startingPrice);
+        UD60x18 r = ud(growthCoefficient);
 
-        // Sum of arithmetic series formula
-        uint256 totalCost = (amount * (firstPrice + lastPrice)) / 2;
+        // Convert supply s and s+n to fixed-point
+        UD60x18 currentS = ud(supply * 1e18);
+        UD60x18 targetS = ud((supply + amount) * 1e18);
 
-        return totalCost;
+        // Term 1: e^(r * (s + n))
+        UD60x18 term1 = exp(r.mul(targetS));
+
+        // Term 2: e^(r * s)
+        UD60x18 term2 = exp(r.mul(currentS));
+
+        // Total Cost = (P0 / r) * (term1 - term2)
+        UD60x18 totalCost = p0.div(r).mul(term1.sub(term2));
+
+        return totalCost.unwrap(); // Returns value in Wei
     }
 
     function getProphetData(uint256 prophetNum) public view returns (address, bool, bool, uint256) {
@@ -399,5 +415,13 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     function getProphetAllegianceChangeEnabled() public view returns (bool) {
         return s_prophetAllegianceChangeEnabled;
+    }
+
+    function getStartingPrice() public view returns (uint256) {
+        return startingPrice;
+    }
+
+    function getGrowthCoefficient() public view returns (uint256) {
+        return growthCoefficient;
     }
 }
