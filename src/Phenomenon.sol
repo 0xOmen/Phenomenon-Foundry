@@ -619,4 +619,16 @@ contract Phenomenon {
     function getOwner() public view returns (address) {
         return owner;
     }
+
+    function getGameplayEngine() public view returns (address) {
+        return s_gameplayEngine;
+    }
+
+    function getTicketEngine() public view returns (address) {
+        return s_ticketEngine;
+    }
+
+    function getPauseBeforeReset() public view returns (bool) {
+        return pauseBeforeReset;
+    }
 }

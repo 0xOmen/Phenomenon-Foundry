@@ -33,7 +33,7 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     Phenomenon private immutable i_gameContract;
     /// @dev This number is used to multiply the ticket cost allowing us to scale the ticket cost up or down.
-    uint256 s_ticketMultiplier;
+    uint256 public s_ticketMultiplier;
     address private owner;
     bool private s_prophetAllegianceChangeEnabled;
     bool private s_ticketSalesEnabled;
@@ -387,5 +387,17 @@ contract PhenomenonTicketEngine is ReentrancyGuard {
 
     function isTicketSalesEnabled() public view returns (bool) {
         return s_ticketSalesEnabled;
+    }
+
+    function getOwner() public view returns (address) {
+        return owner;
+    }
+
+    function getGameContract() public view returns (address) {
+        return address(i_gameContract);
+    }
+
+    function getProphetAllegianceChangeEnabled() public view returns (bool) {
+        return s_prophetAllegianceChangeEnabled;
     }
 }
