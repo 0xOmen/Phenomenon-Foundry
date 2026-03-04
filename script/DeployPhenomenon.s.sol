@@ -96,6 +96,16 @@ contract DeployPhenomenon is Script {
             new PhenomenonTicketEngine(address(phenomenon), startingPrice, growthCoefficient);
         phenomenon.changeGameplayEngine(address(gameplayEngine));
         phenomenon.changeTicketEngine(address(phenomenonTicketEngine));
+
+        // Transfer ownership to hardware wallet when deploying to public blockchain
+        if (block.chainid != 31337) {
+            address hardwareWallet = vm.envAddress("OMEN_TREZOR_ADDRESS");
+            phenomenon.changeOwner(hardwareWallet);
+            phenomenonTicketEngine.changeOwner(hardwareWallet);
+            gameplayEngine.transferOwnership(hardwareWallet);
+            // Note: GameplayEngine uses ConfirmedOwner (2-step). The hardware wallet must call acceptOwnership() separately.
+        }
+
         vm.stopBroadcast();
         return (
             chainlinkFunctionsRouter,
