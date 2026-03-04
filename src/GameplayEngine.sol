@@ -62,7 +62,7 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
     address router; //Check using correct chain for router address
     string source;
     /// @dev Default 750000 exceeds Chainlink subscription tier on Base Sepolia/Mainnet. Call changeGasLimit(300000) after deploy.
-    uint32 gasLimit = 750000;
+    uint32 gasLimit = 300000;
     // Chainlink DON ID for Base Sepolia
     bytes32 donID;
 
