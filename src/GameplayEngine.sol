@@ -404,8 +404,6 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
                     emit accusation(true, false, _currentProphetTurn, target);
                 }
             }
-
-            i_gameContract.turnManager();
         }
         // Only time more than one response is returned is at start game
         // This is the start game logic
@@ -421,6 +419,8 @@ contract GameplayEngine is FunctionsClient, ConfirmedOwner {
             }
             emit gameStarted(i_gameContract.s_gameNumber());
         }
+
+        i_gameContract.turnManager();
 
         // Set game to IN_PROGRESS only after all state updates are complete (CEI)
         // Skip if turnManager ended the game (s_prophetsRemaining == 1)
